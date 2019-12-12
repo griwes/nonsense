@@ -31,7 +31,8 @@ controller::controller(const options & opts, configuration & config_object, cons
 {
     int ret;
 
-    ret = sd_bus_add_object_vtable(srv.bus(),
+    ret = sd_bus_add_object_vtable(
+        srv.bus(),
         &_slot,
         "/info/griwes/nonsense/controller",
         "info.griwes.nonsense.controller",

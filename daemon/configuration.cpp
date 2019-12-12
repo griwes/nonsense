@@ -34,7 +34,8 @@ void configuration::install(const service & srv)
 {
     int ret;
 
-    ret = sd_bus_add_object_vtable(srv.bus(),
+    ret = sd_bus_add_object_vtable(
+        srv.bus(),
         &_slot,
         "/info/griwes/nonsense/configuration",
         "info.griwes.nonsense.configuration",
