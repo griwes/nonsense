@@ -22,6 +22,7 @@ ExecStart=/usr/bin/env bash -c 'ip addr add $(nonsensectl get net-address-masked
 ExecStart=/usr/bin/env bash -c 'ip route add default via $(nonsensectl get downlink-address net.%I)'
 ExecStart=/usr/bin/env nonsensectl unlock net.%I
 
+ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
 ExecStopPost=/usr/bin/env ip route delete default
 ExecStopPost=/usr/bin/env ip addr flush ${BRIDGE}
 

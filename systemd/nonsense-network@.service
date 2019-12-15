@@ -30,4 +30,6 @@ ExecStart=/usr/bin/env nonsensectl unlock net.%I
 
 ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
 ExecStopPost=/usr/bin/env ip link delete ${BRIDGE}
+ExecStopPost=/usr/bin/env systemctl stop nonsense-connection@net.%i.service
+ExecStopPost=/usr/bin/env systemctl stop nonsense-network-route@%i.service
 
