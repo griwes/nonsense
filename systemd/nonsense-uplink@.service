@@ -1,0 +1,27 @@
+[Unit]
+Description=Nonsense namespace engine netns uplink service for %I
+
+BindsTo=nonsense-netns@%i.service
+After=nonsense-netns@%i.service
+JoinsNamespaceOf=nonsense-netns@%i.service
+
+[Install]
+WantedBy=nonsense-netns@%i.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateNetwork=yes
+
+SyslogIdentifier=nonsense-uplink:%I
+
+Environment=UPLINK=nu-%i
+Environment=DOWNLINK=nd-%i
+Environment=NETNS=nonsense:%i
+
+ExecStart=/usr/bin/env ip link add ${UPLINK} type veth peer ${DOWNLINK}
+ExecStart=/usr/bin/env ip link set ${UPLINK} up
+ExecStart=/usr/bin/env ip link set ${UPLINK} netns ${NETNS}
+
+ExecStop=/usr/bin/env ip link delete ${UPLINK}
+

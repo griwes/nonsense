@@ -1,0 +1,17 @@
+[Unit]
+Description=Daemon for the nonsense namespace engine
+
+BindsTo=nftables.service
+After=nftables.service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=dbus
+BusName=info.griwes.nonsense
+
+SyslogIdentifier=nonsensed
+
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/nonsensed --config @NONSENSE_CONFIG_PREFIX@/nonsense/nonsense.json
+

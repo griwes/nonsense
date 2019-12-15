@@ -1,0 +1,19 @@
+configure_file(
+    nonsensed.service.in
+    nonsensed.service
+    @ONLY
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/nonsensed.service
+        nonsense-netns@.service
+        nonsense-netns@.target
+        nonsense-network@.service
+        nonsense-network-route@.service
+        nonsense-uplink@.service
+        nonsense-connection@.service
+        nonsense-interface@.service
+    DESTINATION
+        /lib/systemd/system
+)

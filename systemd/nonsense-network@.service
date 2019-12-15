@@ -1,0 +1,33 @@
+[Unit]
+Description=Nonsense namespace engine network service for %I
+
+BindsTo=nonsense-uplink@net.%i.service
+After=nonsense-uplink@net.%i.service
+JoinsNamespaceOf=nonsense-netns@net.%i.service
+
+[Install]
+WantedBy=nonsense-netns@net.%i.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateNetwork=yes
+
+SyslogIdentifier=nonsense-network:%I
+
+Environment=BRIDGE=nb-%i
+Environment=UPLINK=nu-net.%i
+Environment=DOWNLINK=nd-net.%i
+
+ExecStart=/usr/bin/env ip link add ${BRIDGE} type bridge
+ExecStart=/usr/bin/env ip link set ${BRIDGE} up
+ExecStart=/usr/bin/env ip link set ${UPLINK} master ${BRIDGE}
+
+ExecStart=/usr/bin/env nonsensectl lock net.%I
+ExecStart=/usr/bin/env systemctl start nonsense-network-route@%i.service
+ExecStart=/usr/bin/env systemctl start nonsense-connection@net.%i.service
+ExecStart=/usr/bin/env nonsensectl unlock net.%I
+
+ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
+ExecStopPost=/usr/bin/env ip link delete ${BRIDGE}
+

@@ -1,0 +1,27 @@
+[Unit]
+Description=Nonsense namespace engine netns network addressing service for %I
+
+BindsTo=nonsense-uplink@net.%i.service
+After=nonsense-uplink@net.%i.service
+JoinsNamespaceOf=nonsense-netns@net.%i.service
+
+[Install]
+WantedBy=nonsense-netns@net.%i.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+PrivateNetwork=yes
+
+SyslogIdentifier=nonsense-network-route:%I
+
+Environment=BRIDGE=nb-%i
+
+ExecStart=/usr/bin/env nonsensectl lock net.%I
+ExecStart=/usr/bin/env bash -c 'ip addr add $(nonsensectl get net-address-masked net.%I) dev ${BRIDGE}'
+ExecStart=/usr/bin/env bash -c 'ip route add default via $(nonsensectl get downlink-address net.%I)'
+ExecStart=/usr/bin/env nonsensectl unlock net.%I
+
+ExecStopPost=/usr/bin/env ip route delete default
+ExecStopPost=/usr/bin/env ip addr flush ${BRIDGE}
+

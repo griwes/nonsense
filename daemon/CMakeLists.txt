@@ -19,3 +19,10 @@ target_link_libraries(
     nonsensed
     ${SYSTEMD_LDFLAGS}
 )
+
+install(
+    TARGETS
+        nonsensed
+    DESTINATION
+        bin
+)

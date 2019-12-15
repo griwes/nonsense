@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(nonsense CXX)
 
+set(NONSENSE_CONFIG_PREFIX "/etc" CACHE STRING "The prefix for the configuration directory.")
+
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(SYSTEMD libsystemd>=243)
