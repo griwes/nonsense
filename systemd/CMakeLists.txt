@@ -8,6 +8,7 @@ install(
     FILES
         ${CMAKE_CURRENT_BINARY_DIR}/nonsensed.service
         nonsense-netns@.service
+        nonsense-netns@default.service
         nonsense-netns@.target
         nonsense-network@.service
         nonsense-network-route@.service

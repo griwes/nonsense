@@ -3,7 +3,6 @@ Description=Nonsense namespace engine netns connection service for %I
 
 BindsTo=nonsense-uplink@%i.service
 After=nonsense-uplink@%i.service
-JoinsNamespaceOf=nonsense-netns@%i.service
 
 [Install]
 WantedBy=nonsense-netns@%i.target
@@ -11,7 +10,7 @@ WantedBy=nonsense-netns@%i.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-PrivateNetwork=yes
+NetworkNamespacePath=/var/run/netns/nonsense:%i
 
 SyslogIdentifier=nonsense-connection:%I
 
@@ -25,5 +24,5 @@ ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace
 ExecStart=/usr/bin/env nonsensectl unlock net.%I
 
 ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
-ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %i) "ip link set ${DOWNLINK} netns ${NETNS} || true"'
+ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %i) ip link set ${DOWNLINK} netns ${NETNS}'
 

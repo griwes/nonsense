@@ -3,7 +3,6 @@ Description=Nonsense namespace engine netns network addressing service for %I
 
 BindsTo=nonsense-uplink@net.%i.service
 After=nonsense-uplink@net.%i.service
-JoinsNamespaceOf=nonsense-netns@net.%i.service
 
 [Install]
 WantedBy=nonsense-netns@net.%i.target
@@ -11,7 +10,7 @@ WantedBy=nonsense-netns@net.%i.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-PrivateNetwork=yes
+NetworkNamespacePath=/var/run/netns/nonsense:net.%i
 
 SyslogIdentifier=nonsense-network-route:%I
 
