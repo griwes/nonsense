@@ -29,5 +29,7 @@ ExecStart=/usr/bin/env bash -c 'ip route add default via $(nonsensectl get downl
 ExecStart=/usr/bin/env nonsensectl unlock %I
 
 ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock %I; fi'
+ExecStopPost=/usr/bin/env ip route delete default
+ExecStopPost=/usr/bin/env ip addr flush ${UPLINK}
 ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} netns ${NETNS}'
 
