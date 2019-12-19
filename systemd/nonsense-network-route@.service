@@ -12,6 +12,8 @@ Type=oneshot
 RemainAfterExit=yes
 NetworkNamespacePath=/var/run/netns/nonsense:net.%i
 
+Slice=nonsense-%i.slice
+
 SyslogIdentifier=nonsense-network-route:%I
 
 Environment=BRIDGE=nb-%i

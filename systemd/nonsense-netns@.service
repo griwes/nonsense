@@ -12,6 +12,8 @@ Type=oneshot
 RemainAfterExit=yes
 PrivateNetwork=yes
 
+Slice=nonsense-%i.slice
+
 SyslogIdentifier=nonsense-netns:%I
 
 Environment=NETNS=nonsense:%i

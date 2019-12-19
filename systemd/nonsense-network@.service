@@ -12,6 +12,8 @@ Type=oneshot
 RemainAfterExit=yes
 NetworkNamespacePath=/var/run/netns/nonsense:net.%i
 
+Slice=nonsense-%i.slice
+
 SyslogIdentifier=nonsense-network:%I
 
 Environment=BRIDGE=nb-%i
@@ -24,11 +26,11 @@ ExecStart=/usr/bin/env ip link set ${UPLINK} master ${BRIDGE}
 
 ExecStart=/usr/bin/env nonsensectl lock net.%I
 ExecStart=/usr/bin/env systemctl start nonsense-network-route@%i.service
-ExecStart=/usr/bin/env systemctl start nonsense-connection@net.%i.service
+ExecStart=/usr/bin/env systemctl start nonsense-network-connection@%i.service
 ExecStart=/usr/bin/env nonsensectl unlock net.%I
 
 ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
 ExecStopPost=/usr/bin/env ip link delete ${BRIDGE}
-ExecStopPost=/usr/bin/env systemctl stop nonsense-connection@net.%i.service
+ExecStopPost=/usr/bin/env systemctl stop nonsense-network-connection@%i.service
 ExecStopPost=/usr/bin/env systemctl stop nonsense-network-route@%i.service
 

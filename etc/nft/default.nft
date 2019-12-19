@@ -1,0 +1,30 @@
+table ip filter {
+    # allow all packets originating from the router
+    chain output {
+        type filter hook output priority 100; policy accept;
+    }
+
+    # allow downstream to router, disallow upstream to router, allow all ICMP
+    chain input {
+        type filter hook input priority 0; policy accept;
+        ip protocol icmp accept
+        iifname "nd-*" accept
+        iifname "nu-*" drop
+    }
+
+    # allow from downstream to upstream
+    # allow from upstream to downstream if downstream initiated
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        iifname "nd-*" oifname "nu-*" accept
+        iifname "nu-*" oifname "nd-*" ct state { related, established } accept
+    }
+}
+
+table ip nat {
+    # masquerade the source IP address when routed to an uplink interface
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        oifname "nu-*" masquerade
+    }
+}

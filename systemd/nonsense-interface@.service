@@ -1,0 +1,19 @@
+[Unit]
+Description=Nonsense namespace engine interface namespace for %I
+
+BindsTo=nonsense-netns@int.%i.service
+After=nonsense-netns@int.%i.service
+
+ConditionPathExists=/sys/class/net/%I
+
+[Install]
+WantedBy=nonsense-netns@int.%i.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+NetworkNamespacePath=/var/run/netns/nonsense:int.%i
+
+SyslogIdentifier=nonsense-interface:%I
+
+

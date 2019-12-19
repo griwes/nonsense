@@ -12,17 +12,22 @@ Type=oneshot
 RemainAfterExit=yes
 NetworkNamespacePath=/var/run/netns/nonsense:%i
 
+Slice=nonsense-%i.slice
+
 SyslogIdentifier=nonsense-connection:%I
 
 Environment=NETNS=nonsense:%i
+Environment=UPLINK=nu-%i
 Environment=DOWNLINK=nd-%i
 
-ExecStart=/usr/bin/env nonsensectl lock net.%I
-ExecStart=/usr/bin/env bash -c 'ip link set ${DOWNLINK} netns $(nonsensectl get uplink-namespace %i)'
-ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %i) ip addr add $(nonsensectl get downlink-address-masked %I) dev ${DOWNLINK}'
-ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %i) ip link set ${DOWNLINK} up'
-ExecStart=/usr/bin/env nonsensectl unlock net.%I
+ExecStart=/usr/bin/env nonsensectl lock %I
+ExecStart=/usr/bin/env bash -c 'ip link set ${DOWNLINK} netns $(nonsensectl get uplink-namespace %I)'
+ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} master $(nonsensectl get uplink-bridge %I)'
+ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} up'
+ExecStart=/usr/bin/env bash -c 'ip addr add $(nonsensectl get uplink-address-masked %I) dev ${UPLINK}'
+ExecStart=/usr/bin/env bash -c 'ip route add default via $(nonsensectl get downlink-address %I)'
+ExecStart=/usr/bin/env nonsensectl unlock %I
 
-ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock net.%I; fi'
-ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %i) ip link set ${DOWNLINK} netns ${NETNS}'
+ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock %I; fi'
+ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} netns ${NETNS}'
 

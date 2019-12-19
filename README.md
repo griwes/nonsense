@@ -46,8 +46,20 @@ Build requirements are as follows:
 
 ### ...to run it?
 
+The runtime requirements are as follows:
+
   * Linux kernel, with network namespace support (duh);
   * systemd (duh), version 243 or higher;
   * iproute2;
-  * nftables.
+  * dhclient (for nonsense-managed interfaces configured to use DHCP to obtain their addresses);
+  * iw (for nonsense-managed wireless interfaces);
+  * bind (for router network namespaces);
+  * nftables (for router network namespaces.
+
+### ...to not do to be able to run it?
+
+In addition to the requirements above, the following configurations are **not** supported:
+
+  * using `systemd-resolved` as the DNS service (see
+  [this email](https://lists.freedesktop.org/archives/systemd-devel/2017-May/038934.html) as rationale).
 

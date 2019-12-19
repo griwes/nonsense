@@ -14,29 +14,16 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#pragma once
 
-#include "cli.h"
-#include "configuration.h"
-#include "controller.h"
-#include "log_helpers.h"
-#include "service.h"
+#include <cstdlib>
+#include <string_view>
 
-int main(int argc, char ** argv)
-try
+namespace nonsensed
 {
-    auto opts = nonsensed::options(argc, argv);
-
-    auto config = nonsensed::configuration(opts);
-    auto service = nonsensed::service(opts, config);
-    auto control = nonsensed::controller(opts, config, service);
-
-    service.loop();
-
-    return 0;
+inline std::string_view error_prefix()
+{
+    static bool is_systemd_service = std::string_view(std::getenv("NONSENSED_MODE")) == "systemd_service";
+    return is_systemd_service ? std::string_view("<3>") : std::string_view("");
 }
-catch (std::exception & ex)
-{
-    std::cerr << nonsensed::error_prefix() << "Fatal error: " << ex.what() << '\n';
-    return 1;
 }

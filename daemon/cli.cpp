@@ -17,6 +17,7 @@
 #include "cli.h"
 
 #include <cxxopts.hpp>
+#include "log_helpers.h"
 
 namespace nonsensed
 {
@@ -35,10 +36,10 @@ options::options(int argc, char ** argv)
 
     if (argc != 1)
     {
-        std::cerr << "Error: Unrecognized options:\n";
+        std::cerr << error_prefix() << "Error: Unrecognized options:\n";
         for (int i = 1; i < argc; ++i)
         {
-            std::cerr << "    " << argv[i] << '\n';
+            std::cerr << error_prefix() << "    " << argv[i] << '\n';
         }
         std::exit(1);
     }

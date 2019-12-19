@@ -1,0 +1,25 @@
+[Unit]
+Description=Nonsense namespace engine netns router service for %I
+
+BindsTo=nonsense-uplink@%i.service
+After=nonsense-uplink@%i.service
+
+[Install]
+WantedBy=nonsense-netns@%i.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+NetworkNamespacePath=/var/run/netns/nonsense:%i
+
+Slice=nonsense-%i.slice
+
+SyslogIdentifier=nonsense-router:%I
+
+ExecStartPre=/usr/bin/env nft flush ruleset
+
+ExecStart=/usr/bin/env nft -f @NONSENSE_CONFIG_PREFIX@/nonsense/nft/default.nft
+ExecStart=/usr/bin/env nft include '"@NONSENSE_CONFIG_PREFIX@/nonsense/nft/%I/*.nft"'
+
+ExecStop=/usr/bin/env nft flush ruleset
+

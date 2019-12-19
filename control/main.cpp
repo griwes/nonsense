@@ -16,7 +16,8 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
+#include <string_view>
+#include <unordered_map>
 
 // This is not a real attempt to write this, just a mock-up to allow testing a subset of the service units
 // before starting to work on the actual client.
@@ -26,12 +27,31 @@ int main(int argc, char ** argv)
     std::string lock_command = "lock";
     std::string unlock_command = "unlock";
     std::string main_command = "get";
-    std::vector<std::string> get_subcommands = { "net",
-                                                 "net-address",
-                                                 "net-address-masked",
-                                                 "downlink-address",
-                                                 "downlink-address-masked",
-                                                 "uplink-namespace" };
+    std::unordered_map<std::string_view, std::unordered_map<std::string_view, std::string_view>>
+        configuration = { { "net.test",
+                            { { "net", "192.168.17.0" },
+                              { "net-address", "192.168.17.2" },
+                              { "net-address-masked", "192.168.17.2/24" },
+                              { "downlink-address", "192.168.17.1" },
+                              { "downlink-address-masked", "192.168.17.1/24" },
+                              { "uplink-namespace", "temporary-nonsense-uplink" } } },
+                          { "router",
+                            { { "downlink-address", "192.168.17.1" },
+                              { "uplink-address-masked", "192.168.17.17/24" },
+                              { "uplink-namespace", "nonsense:net.test" },
+                              { "uplink-bridge", "nb-test" } } },
+                          { "net.client",
+                            { { "net", "192.168.27.0" },
+                              { "net-address", "192.168.27.2" },
+                              { "net-address-masked", "192.168.27.2/24" },
+                              { "downlink-address", "192.168.27.1" },
+                              { "downlink-address-masked", "192.168.27.1/24" },
+                              { "uplink-namespace", "nonsense:router" } } },
+                          { "client",
+                            { { "downlink-address", "192.168.27.1" },
+                              { "uplink-address-masked", "192.168.27.27/24" },
+                              { "uplink-namespace", "nonsense:net.client" },
+                              { "uplink-bridge", "nb-client" } } } };
 
     if (argv[1] == lock_command)
     {
@@ -47,32 +67,12 @@ int main(int argc, char ** argv)
     assert(argc == 4);
     assert(argv[1] == main_command);
 
-    if (argv[2] == get_subcommands[0])
+    try
     {
-        std::cout << "192.168.17.0";
+        std::cout << configuration.at(argv[3]).at(argv[2]);
     }
-    else if (argv[2] == get_subcommands[1])
+    catch (...)
     {
-        std::cout << "192.168.17.2";
-    }
-    else if (argv[2] == get_subcommands[2])
-    {
-        std::cout << "192.168.17.2/24";
-    }
-    else if (argv[2] == get_subcommands[3])
-    {
-        std::cout << "192.168.17.1";
-    }
-    else if (argv[2] == get_subcommands[4])
-    {
-        std::cout << "192.168.17.1/24";
-    }
-    else if (argv[2] == get_subcommands[5])
-    {
-        std::cout << "temporary-nonsense-uplink";
-    }
-    else
-    {
-        assert(0);
+        std::cerr << "<3>invalid keys: " << argv[3] << ", " << argv[2] << std::endl;
     }
 }

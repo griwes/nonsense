@@ -12,6 +12,8 @@ Type=oneshot
 RemainAfterExit=yes
 NetworkNamespacePath=/var/run/netns/nonsense:%i
 
+Slice=nonsense-%i.slice
+
 SyslogIdentifier=nonsense-uplink:%I
 
 Environment=UPLINK=nu-%i

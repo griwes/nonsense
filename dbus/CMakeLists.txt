@@ -2,5 +2,5 @@ install(
     FILES
         info.griwes.nonsense.conf
     DESTINATION
-        /etc/dbus-1/system.d
+        ${NONSENSE_DBUS_CONFIG_PREFIX}
 )
