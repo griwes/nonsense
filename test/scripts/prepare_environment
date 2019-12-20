@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+export DEBIAN_FRONTEND=noninteractive
+
+sudo -E apt-get update
+sudo -E apt-get -y full-upgrade
+sudo -E apt-get -y install git docker.io
+

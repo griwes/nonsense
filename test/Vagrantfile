@@ -1,0 +1,12 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "debian/buster64"
+  config.vm.provision :shell, :path => "scripts/prepare_environment"
+
+  config.vm.synced_folder "..", "/nonsense", type: "rsync",
+    rsync__args: ["--verbose", "--archive", "--delete", "-z", "--copy-links", "--times"]
+
+  config.vm.provider "virtualbox" do |vb|
+  end
+
+end

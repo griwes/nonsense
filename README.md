@@ -40,9 +40,9 @@ Probably not yet, but I'm just a README, not your parent.
 
 Build requirements are as follows:
 
-  * CMake 3.15 or higher;
-  * a C++20 compiler with coroutines support (as of Dec '19, this means Clang 5 or higher);
-  * libsystemd, version 243 or higher.
+  * CMake 3.13 or higher;
+  * a C++20 compiler with coroutines support (as of Dec '19, this means Clang 5 or higher, with libc++);
+  * libsystemd, version 241 or higher.
 
 ### ...to run it?
 
@@ -62,4 +62,44 @@ In addition to the requirements above, the following configurations are **not** 
 
   * using `systemd-resolved` as the DNS service (see
   [this email](https://lists.freedesktop.org/archives/systemd-devel/2017-May/038934.html) as rationale).
+
+## Does this even have tests?
+
+Yes!
+
+The testing "framework" ("environment" would probably be a better word, but whatever) is based on running scenarios
+inside Docker containers inside a well-known environment inside Vagrant. This may seem convoluted, but there _is_ a
+reason to this madness: some of the scenarios are going to want to test Nonsense taking over wireless interfaces,
+and the only reasonable way to do this is by involving the kernel module called `mac80211_hwsim`, which means
+inserting and removing it with potentially changing options between scenarious. Additionally, the scenarios will
+want to create, pass in, and destroy `veth` interfaces to test non-wireless interface features. All of this could
+be potentially harmful to whatever the user's (actual) host environment is.
+
+The currently preferred Vagrant provider is VirtualBox. Please refer to outside guides for installing Vagrant and
+additional commands for VM management using it.
+
+All the commands listed below shall be executed in the `test` subdirectory of this project.
+
+To prepare a virtual machine to run the tests on, run:
+
+```
+vagrant up
+```
+
+To run the full test suite on all supported configurations, run:
+
+```
+# Copy the current copy of the Nonsense tree into the testing VM.
+# Run this whenever you make changes.
+vagrant rsync
+
+# Invoke the test suite. Try also with `-h` appended to this command to see available options.
+vagrant ssh -- /nonsense/test/scripts/run_test_suite
+```
+
+To tear down the testing VM, run:
+
+```
+vagrant destroy
+```
 

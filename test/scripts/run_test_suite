@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+
+set -e
+
+known_configurations=(
+    debian-clang:{stable,testing,unstable}
+)
+
+tmpdir=$(mktemp -d)
+
+function cleanup() {
+    rm -rf ${tmpdir}
+}
+trap cleanup EXIT
+
+function print_help() {
+    echo "### Valid flags are:"
+    echo "### -d distro:release - only run matching configurations (both distro and release are patterns)"
+    echo "### -t testcase - only run matching testcases (testcase is a pattern)"
+}
+
+while [[ $# -gt 0 ]]
+do
+    case "$1" in
+        -d|--distribution)
+            shift
+            IFS=':' read DISTRO RELEASE <<<$1
+            echo "### Requested configuration: distribution: ${DISTRO}, release: ${RELEASE}"
+            shift
+            ;;
+        -t|--testcase)
+            shift
+            TESTCASE=$1
+            echo "### Requested testcase pattern: ${TESTCASE}"
+            shift
+            ;;
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        *)
+            echo "### Unknown flag: $1"
+            print_help
+            exit 1
+            ;;
+    esac
+done
+
+function should_skip() {
+    [[ -n "$1" ]] && [[ "$2" != $1 ]]
+    return $?
+}
+
+cd /nonsense
+rm -f ${tmpdir}/results
+
+for configuration in ${known_configurations[@]}
+do
+    IFS=':' read distro release <<<${configuration}
+
+    if should_skip "${DISTRO}" "${distro}" || should_skip "${RELEASE}" "${release}"
+    then
+        continue
+    fi
+
+    echo
+    echo "### ${configuration}: build"
+    sudo docker build --pull \
+        --build-arg=RELEASE=${release} \
+        -f test/docker/${distro}.Dockerfile \
+        --tag nonsense/${configuration} .
+
+    for test in $(find test/suite -name "*.test" | sed 's:^test/suite/::' | sort -n)
+    do
+        if should_skip "${TESTCASE}" "${test}"
+        then
+            continue
+        fi
+
+        echo
+        echo "### ${configuration}: ${test}: running..."
+
+        flags=
+        if [[ -f test/suite/${test}.setup ]]
+        then
+            flags=$(test/suite/${test}.setup pre ${tmpdir})
+        fi
+
+        container=$(sudo docker run --rm -d \
+            --privileged \
+            --tmpfs /run \
+            --tmpfs /run/lock \
+            --tmpfs /tmp \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+            ${flags} \
+            nonsense/${configuration} systemd)
+
+        if ! sudo docker exec ${container} bash -c 'systemctl is-system-running --wait; systemctl status' >/dev/null
+        then
+            echo "### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
+        fi
+
+        if sudo docker exec ${container} bash -c "bash -ex /nonsense/test/suite/${test} 2>&1" >${tmpdir}/log
+        then
+            echo "### ${configuration}: ${test}: success"
+        else
+            cat ${tmpdir}/log
+            echo "### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
+        fi
+        sudo docker kill ${container} >/dev/null
+
+        if [[ -f test/suite/${test}.setup ]]
+        then
+            test/suite/${test}.setup post ${tmpdir}
+        fi
+    done
+done
+
+if [[ -f ${tmpdir}/results ]]
+then
+    echo
+    echo "### Test failures:"
+    cat ${tmpdir}/results
+
+    exit 1
+fi
+
