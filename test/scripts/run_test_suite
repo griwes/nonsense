@@ -3,7 +3,9 @@
 set -e
 
 known_configurations=(
-    debian-clang:{stable,testing,unstable}
+    debian-clang:{buster,testing,unstable}
+    ubuntu-legacy-clang:bionic # unsupported cmake version in system packages
+    ubuntu-clang:{rolling,devel}
 )
 
 tmpdir=$(mktemp -d)
@@ -65,10 +67,14 @@ do
 
     echo
     echo "### ${configuration}: build"
-    sudo docker build --pull \
+    if ! sudo docker build --pull \
         --build-arg=RELEASE=${release} \
         -f test/docker/${distro}.Dockerfile \
         --tag nonsense/${configuration} .
+    then
+        echo "### ${configuration}: build failure" | tee -a ${tmpdir}/results
+        continue
+    fi
 
     for test in $(find test/suite -name "*.test" | sed 's:^test/suite/::' | sort -n)
     do
@@ -95,12 +101,17 @@ do
             ${flags} \
             nonsense/${configuration} systemd)
 
-        if ! sudo docker exec ${container} bash -c 'systemctl is-system-running --wait; systemctl status' >/dev/null
+        # allow a few seconds for dbus to stand up (otherwise random failures would accur not exactly rarely)
+        # but only if it is not up at the point of doing docker exec
+        # and then use it to wait for the systemd inside the container to finish initializing
+        # and then check the status
+        if ! sudo docker exec ${container} bash -e -c '
+                i=3; if [[ "$i" -ne 0 ]] && ! pgrep dbus-daemon | grep "" -q; then sleep 1; i=$((i-1)); fi
+                systemctl is-system-running --wait && systemctl status
+            ' >/dev/null
         then
             echo "### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
-        fi
-
-        if sudo docker exec ${container} bash -c "bash -ex /nonsense/test/suite/${test} 2>&1" >${tmpdir}/log
+        elif sudo docker exec ${container} bash -c "bash -ex /nonsense/test/suite/${test} 2>&1" >${tmpdir}/log
         then
             echo "### ${configuration}: ${test}: success"
         else
@@ -119,7 +130,7 @@ done
 if [[ -f ${tmpdir}/results ]]
 then
     echo
-    echo "### Test failures:"
+    echo "### Failures:"
     cat ${tmpdir}/results
 
     exit 1

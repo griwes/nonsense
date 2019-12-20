@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.12)
 
 project(nonsense CXX)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -12,9 +12,9 @@ set(NONSENSE_SYSTEMD_SYSTEM_PREFIX "/lib/systemd/system" CACHE STRING
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(SYSTEMD libsystemd>=241)
+pkg_check_modules(SYSTEMD libsystemd>=237)
 if (NOT SYSTEMD_FOUND)
-    message(FATAL_ERROR "libsystemd of version at least 243 is required, but has not been found.")
+    message(FATAL_ERROR "libsystemd of version at least 237 is required, but has not been found.")
 endif()
 
 include_directories(
