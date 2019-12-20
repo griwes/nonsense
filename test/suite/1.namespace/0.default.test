@@ -1,0 +1,17 @@
+systemctl start nonsense-netns@default.service
+
+systemctl is-system-running
+systemctl status nonsense-netns@default.service
+systemctl status nonsense-default.slice
+
+ip netns | grep -q '^nonsense:default$'
+
+ip netns id | grep -q '^nonsense:default$'
+ip netns exec nonsense:default ip netns id | grep -q '^nonsense:default$'
+
+systemctl stop nonsense-netns@default.service
+systemctl is-system-running
+
+! ip netns | grep -q '^nonsense:default$'
+
+# vim: ft=sh

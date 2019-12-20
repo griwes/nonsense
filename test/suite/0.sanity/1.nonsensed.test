@@ -1,4 +1,4 @@
-systemctl start nonsensed.service \
-    && systemctl status nonsensed.service
+systemctl start nonsensed.service
+systemctl status nonsensed.service
 
 # vim: ft=sh

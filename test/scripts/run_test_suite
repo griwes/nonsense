@@ -3,8 +3,7 @@
 set -e
 
 known_configurations=(
-    debian-clang:{buster,testing,unstable}
-    ubuntu-legacy-clang:bionic # unsupported cmake version in system packages
+    debian-clang:{testing,unstable}
     ubuntu-clang:{rolling,devel}
 )
 
@@ -17,9 +16,14 @@ trap cleanup EXIT
 
 function print_help() {
     echo "### Valid flags are:"
-    echo "### -d distro:release - only run matching configurations (both distro and release are patterns)"
-    echo "### -t testcase - only run matching testcases (testcase is a pattern)"
+    echo "### -d/--distribution distro:release - only run matching configurations (both distro and release are patterns)"
+    echo "### -t/--testcase testcase - only run matching testcases (testcase is a pattern)"
+    echo "### -f/--ignore-fatal - don't interrupt a test flow for a configuration after encountering fatal failure"
+    echo "### -p/--no-pull - do not pass --pull to docker build (useful when offline)"
 }
+
+IGNORE_FATAL=0
+DOCKER_BUILD_PULL="--pull"
 
 while [[ $# -gt 0 ]]
 do
@@ -30,16 +34,31 @@ do
             echo "### Requested configuration: distribution: ${DISTRO}, release: ${RELEASE}"
             shift
             ;;
+
         -t|--testcase)
             shift
             TESTCASE=$1
             echo "### Requested testcase pattern: ${TESTCASE}"
             shift
             ;;
+
+        -f|--ignore-fatal)
+            shift
+            IGNORE_FATAL=1
+            echo "### Ignoring fatal failures"
+            ;;
+
+        -p|--no-pull)
+            shift
+            DOCKER_BUILD_PULL=
+            echo "### Avoiding pulling base image updates in docker build"
+            ;;
+
         -h|--help)
             print_help
             exit 0
             ;;
+
         *)
             echo "### Unknown flag: $1"
             print_help
@@ -67,7 +86,7 @@ do
 
     echo
     echo "### ${configuration}: build"
-    if ! sudo docker build --pull \
+    if ! sudo docker build ${DOCKER_BUILD_PULL} \
         --build-arg=RELEASE=${release} \
         -f test/docker/${distro}.Dockerfile \
         --tag nonsense/${configuration} .
@@ -86,6 +105,7 @@ do
         echo
         echo "### ${configuration}: ${test}: running..."
 
+        fatal=0
         flags=
         if [[ -f test/suite/${test}.setup ]]
         then
@@ -97,7 +117,7 @@ do
             --tmpfs /run \
             --tmpfs /run/lock \
             --tmpfs /tmp \
-            -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+            -v /sys/fs/cgroup:/sys/fs/cgroup \
             ${flags} \
             nonsense/${configuration} systemd)
 
@@ -116,13 +136,24 @@ do
             echo "### ${configuration}: ${test}: success"
         else
             cat ${tmpdir}/log
-            echo "### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
+            if [[ -f test/suite/${test}.fatal ]]
+            then
+                echo "### ${configuration}: ${test}: fatal failure" | tee -a ${tmpdir}/results
+                fatal=1
+            else
+                echo "### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
+            fi
         fi
         sudo docker kill ${container} >/dev/null
 
         if [[ -f test/suite/${test}.setup ]]
         then
             test/suite/${test}.setup post ${tmpdir}
+        fi
+
+        if [[ "${IGNORE_FATAL}" -eq 0 ]] && [[ "${fatal}" -eq 1 ]]
+        then
+            break
         fi
     done
 done

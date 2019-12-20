@@ -14,6 +14,8 @@ RemainAfterExit=yes
 # This is the only difference between this unit and the template.
 PrivateNetwork=no
 
+Slice=nonsense-default.slice
+
 SyslogIdentifier=nonsense-netns:default
 
 Environment=NETNS=nonsense:default

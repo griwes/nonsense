@@ -1,0 +1,16 @@
+systemctl start nonsense-netns@test.service
+
+systemctl is-system-running
+systemctl status nonsense-netns@test.service
+systemctl status nonsense-test.slice
+
+ip netns | grep -q '^nonsense:test$'
+
+ip netns exec nonsense:test ip netns id | grep -q '^nonsense:test$'
+
+systemctl stop nonsense-netns@test.service
+systemctl is-system-running
+
+! ip netns | grep -q '^nonsense:test$'
+
+# vim: ft=sh

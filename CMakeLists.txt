@@ -12,9 +12,9 @@ set(NONSENSE_SYSTEMD_SYSTEM_PREFIX "/lib/systemd/system" CACHE STRING
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(SYSTEMD libsystemd>=237)
+pkg_check_modules(SYSTEMD libsystemd>=242)
 if (NOT SYSTEMD_FOUND)
-    message(FATAL_ERROR "libsystemd of version at least 237 is required, but has not been found.")
+    message(FATAL_ERROR "libsystemd of version at least 242 is required, but has not been found.")
 endif()
 
 include_directories(

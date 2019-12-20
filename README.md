@@ -42,7 +42,7 @@ Build requirements are as follows:
 
   * CMake 3.12 or higher;
   * a C++20 compiler with coroutines support (as of Dec '19, this means Clang 5 or higher, with libc++);
-  * libsystemd, version 237 or higher (based on the systems Nonsense is tested on).
+  * libsystemd, version 242 or higher (based on the systems Nonsense is tested on).
 
 ### ...to run it?
 
