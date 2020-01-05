@@ -1,0 +1,33 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+
+  test-suite:
+
+    strategy:
+      matrix:
+        config:
+
+        - "debian-clang:testing"
+        - "debian-clang:unstable"
+
+        - "ubuntu-clang:rolling"
+        - "ubuntu-clang:devel"
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Create /nonsense
+      run: sudo ln -sf $(pwd) /nonsense
+
+    - name: Provision
+      env:
+        SKIP_UPGRADE: 1
+      run: /nonsense/test/scripts/prepare_environment
+
+    - name: Run tests
+      run: /nonsense/test/scripts/run_test_suite -d ${{ matrix.config }}

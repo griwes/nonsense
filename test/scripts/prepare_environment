@@ -3,7 +3,10 @@
 export DEBIAN_FRONTEND=noninteractive
 
 sudo -E apt-get update
-sudo -E apt-get -y full-upgrade
+if [[ "${SKIP_UPGRADE}" -ne 1 ]]
+then
+    sudo -E apt-get -y full-upgrade
+fi
 sudo -E apt-get -y install git docker.io
 
 sudo mkdir /cache
