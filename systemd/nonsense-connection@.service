@@ -17,19 +17,10 @@ Slice=nonsense-%i.slice
 SyslogIdentifier=nonsense-connection:%I
 
 Environment=NETNS=nonsense:%i
-Environment=UPLINK=nu-%i
 Environment=DOWNLINK=nd-%i
+Environment=ENTITY=%I
 
-ExecStart=/usr/bin/env nonsensectl lock %I
-ExecStart=/usr/bin/env bash -c 'ip link set ${DOWNLINK} netns $(nonsensectl get uplink-namespace %I)'
-ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} master $(nonsensectl get uplink-bridge %I)'
-ExecStart=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} up'
-ExecStart=/usr/bin/env bash -c 'ip addr add $(nonsensectl get uplink-address-masked %I) dev ${UPLINK}'
-ExecStart=/usr/bin/env bash -c 'ip route add default via $(nonsensectl get downlink-address %I)'
-ExecStart=/usr/bin/env nonsensectl unlock %I
+ExecStart=/usr/bin/env nonsense-connection-setup
 
-ExecStopPost=/usr/bin/env bash -c 'if [[ "${SERVICE_RESULT}" == "exit_code" ]]; then nonsensectl unlock %I; fi'
-ExecStopPost=/usr/bin/env ip route delete default
-ExecStopPost=/usr/bin/env ip addr flush ${UPLINK}
-ExecStopPost=/usr/bin/env bash -c 'ip netns exec $(nonsensectl get uplink-namespace %I) ip link set ${DOWNLINK} netns ${NETNS}'
+ExecStopPost=/usr/bin/env nonsense-connection-teardown
 

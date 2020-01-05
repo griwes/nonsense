@@ -1,6 +1,7 @@
 file(
     GLOB files
     LIST_DIRECTORIES TRUE
+    CONFIGURE_DEPENDS
     *
 )
 
@@ -10,7 +11,7 @@ foreach (file IN LISTS files)
             DIRECTORY
                 "${file}"
             DESTINATION
-                ${NONSENSE_CONFIG_PREFIX}/nonsense
+                ${NONSENSE_CONFIG_PREFIX}
         )
     endif()
 endforeach()

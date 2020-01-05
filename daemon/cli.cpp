@@ -52,4 +52,9 @@ options::options(int argc, char ** argv)
 
     _config_file = result["config"].as<std::string>();
 }
+
+std::string_view options::configuration_file() const
+{
+    return _config_file;
+}
 }

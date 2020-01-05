@@ -4,8 +4,16 @@ project(nonsense CXX)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 20)
 
-set(NONSENSE_CONFIG_PREFIX "/etc" CACHE STRING "The prefix for the configuration directory.")
-set(NONSENSE_DBUS_CONFIG_PREFIX "/etc/dbus-1/system.d" CACHE STRING
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING
+        "Install path prefix, prepended onto install directories." FORCE)
+endif()
+
+include(GNUInstallDirs)
+
+set(NONSENSE_CONFIG_PREFIX ${CMAKE_INSTALL_FULL_SYSCONFDIR} CACHE STRING
+    "The prefix for the configuration directory.")
+set(NONSENSE_DBUS_CONFIG_PREFIX "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1" CACHE STRING
     "The prefix for the dbus configuration directory.")
 set(NONSENSE_SYSTEMD_SYSTEM_PREFIX "/lib/systemd/system" CACHE STRING
     "The prefix for the systemd unit directory to use.")
@@ -26,6 +34,13 @@ include_directories(
 link_directories(
     ${SYSTEMD_LIBRARY_DIRS}
 )
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-private-field")
+endif()
 
 add_subdirectory(daemon)        # for nonsensed
 add_subdirectory(control)       # for nonsensectl

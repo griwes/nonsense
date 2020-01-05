@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -x
+
+nonsensectl lock "${ENTITY}"
+
+function raii() {
+    nonsensectl unlock "${ENTITY}"
+}
+
+trap raii EXIT
+
+ip route delete default
+
+device=$(nonsensectl get "${ENTITY}" uplink-device) && \
+    ip addr flush "${device}"
+
+uplink=$(nonsensectl get "${ENTITY}" uplink-entity) && \
+    ip netns exec "${uplink}" ip link set "${DOWNLINK}" netns "${NETNS}"
+

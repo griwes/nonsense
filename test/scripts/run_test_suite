@@ -131,7 +131,18 @@ do
             ' >/dev/null
         then
             echo "### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
-        elif sudo docker exec ${container} bash -c "bash -ex /nonsense/test/suite/${test} 2>&1" >${tmpdir}/log
+        elif sudo docker exec ${container} bash -c "
+                bash -ex /nonsense/test/suite/${test} 2>&1 \
+                    || {
+                        printf '\nNonsense services status:\n'
+                        systemctl status 'nonsense*.service'
+
+                        printf '\nNonsense journal entries:\n'
+                        journalctl -u 'nonsense*'
+
+                        false
+                    }
+            " >${tmpdir}/log
         then
             echo "### ${configuration}: ${test}: success"
         else

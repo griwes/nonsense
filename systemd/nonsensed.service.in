@@ -18,9 +18,9 @@ SyslogIdentifier=nonsensed
 Environment=NONSENSED_MODE=systemd_service
 
 ExecStartPre=/bin/sh -c 'if systemctl -q is-active systemd-resolved.service; then \
-                             echo "<3>systemd-resolved is active, this is not supported."; \
-                             exit 1; \
-                         fi'
+ echo "<3>systemd-resolved is active, this is not supported."; \
+ exit 1; \
+fi'
 
 ExecStart=@CMAKE_INSTALL_PREFIX@/bin/nonsensed --config @NONSENSE_CONFIG_PREFIX@/nonsense/nonsense.json
 

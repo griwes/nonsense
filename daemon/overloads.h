@@ -16,29 +16,14 @@
 
 #pragma once
 
-extern "C"
-{
-    struct sd_bus;
-}
-
 namespace nonsensed
 {
-class options;
-class configuration;
-
-class service
+template<typename... Ts>
+struct overload : Ts...
 {
-public:
-    service(const options & opts, configuration & config_object);
-
-    void loop();
-
-    sd_bus * bus() const
-    {
-        return _bus;
-    }
-
-private:
-    sd_bus * _bus = nullptr;
+    using Ts::operator()...;
 };
+
+template<typename... Ts>
+overload(Ts...)->overload<Ts...>;
 }

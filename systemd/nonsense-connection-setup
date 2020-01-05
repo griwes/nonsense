@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -exu
+
+nonsensectl lock "${ENTITY}"
+
+function raii() {
+    nonsensectl unlock "${ENTITY}"
+}
+
+trap raii EXIT
+
+uplink=$(nonsensectl get "${ENTITY}" uplink-entity)
+ip link set "${DOWNLINK}" netns "${uplink}"
+
+if [[ "${ENTITY}" == net.* ]]
+then
+    downlink_address=$(nonsensectl get "${ENTITY}" downlink-address-masked)
+    ip netns exec "${uplink}" ip addr add "${downlink_address}" dev "${DOWNLINK}"
+else
+    bridge=$(nonsensectl get "${ENTITY}" uplink-bridge)
+    ip netns exec "${uplink}" ip link set "${DOWNLINK}" master "${bridge}"
+fi
+
+ip netns exec "${uplink}" ip link set "${DOWNLINK}" up
+
+uplink_address=$(nonsensectl get "${ENTITY}" uplink-address-masked)
+uplink_device=$(nonsensectl get "${ENTITY}" uplink-device)
+ip addr add "${uplink_address}" dev "${uplink_device}"
+
+gateway=$(nonsensectl get "${ENTITY}" downlink-address)
+ip route add default via "${gateway}"
+

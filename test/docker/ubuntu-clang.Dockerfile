@@ -6,7 +6,7 @@ RUN apt-get update \
     && apt-get -yq full-upgrade
 
 RUN apt-get install -yq build-essential pkg-config cmake libsystemd-dev systemd iproute2 iw nftables bind9 \
-    clang libc++1 libc++abi1 libc++-dev \
+    iputils-ping clang libc++1 libc++abi1 libc++-dev \
     && rm -rf /etc/systemd/system/*
 
 # le sigh

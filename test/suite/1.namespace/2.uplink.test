@@ -1,17 +1,26 @@
+# check that the service starts successfully
 systemctl start nonsense-uplink@test.service
 
-systemctl is-system-running
 systemctl status nonsense-uplink@test.service
+systemctl is-system-running
 
 ip netns exec nonsense:test ip link
 
 ip netns exec nonsense:test ip link | grep 'nu-test' | grep -q 'BROADCAST,MULTICAST,UP'
 ip netns exec nonsense:test ip link | grep 'nd-test' | grep -q 'state DOWN'
 
+# check that it shuts down successfully
 systemctl stop nonsense-uplink@test.service
 systemctl is-system-running
 
 ! ip netns exec nonsense:test ip link | grep -q 'nu-test'
 ! ip netns exec nonsense:test ip link | grep -q 'nd-test'
+
+# and that restarting it also works correctly
+systemctl start nonsense-uplink@test.service
+systemctl is-system-running
+
+ip netns exec nonsense:test ip link | grep 'nu-test' | grep -q 'BROADCAST,MULTICAST,UP'
+ip netns exec nonsense:test ip link | grep 'nd-test' | grep -q 'state DOWN'
 
 # vim: ft=sh

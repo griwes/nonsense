@@ -49,7 +49,7 @@ Build requirements are as follows:
 The runtime requirements are as follows:
 
   * Linux kernel, with network namespace support (duh);
-  * systemd (duh), version 243 or higher;
+  * systemd (duh), version 242 or higher;
   * iproute2;
   * dhclient (for nonsense-managed interfaces configured to use DHCP to obtain their addresses);
   * iw (for nonsense-managed wireless interfaces);

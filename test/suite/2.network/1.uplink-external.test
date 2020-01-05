@@ -1,0 +1,62 @@
+TARGET_IP=10.0.0.1
+
+# setup the uplink namespace
+ip netns add uplink
+ip netns exec uplink ip addr add 10.0.0.1/32 dev lo
+
+# setup the nonsense configuration
+token=$(nonsensectl get new-transaction-token)
+nonsensectl -t ${token} add namespace uplink type netns-external
+nonsensectl -t ${token} add network test address 192.168.2.0/24 uplink ns.uplink
+nonsensectl -t ${token} commit
+
+# check that the service starts successfully
+systemctl start nonsense-network@test.service
+
+systemctl status nonsense-network@test.service
+systemctl is-system-running
+
+systemctl start nonsense-connection@net.test.service
+
+systemctl status nonsense-connection@net.test.service
+systemctl is-system-running
+
+ip netns exec uplink ip link
+ip netns exec uplink ip addr
+ip netns exec uplink ip route
+ip netns exec nonsense:net.test ip link
+ip netns exec nonsense:net.test ip addr
+ip netns exec nonsense:net.test ip route
+
+# test devices and routes
+ip netns exec uplink ip link | grep -q 'nd-net.test'
+ip netns exec uplink ip route | grep 192.168.2.0/24 | grep -q 'dev nd-net.test'
+ip netns exec nonsense:net.test ip route | grep default | grep -q 'dev nb-test'
+
+# test connectivity
+ip netns exec nonsense:net.test ping -c 1 -W 1 192.168.2.1
+ip netns exec nonsense:net.test ping -c 1 -W 1 10.0.0.1
+ip netns exec uplink ping -c 1 -W 1 192.168.2.2
+
+# check tha the service shuts down successfully
+systemctl stop nonsense-connection@net.test.service
+systemctl is-system-running
+
+! ip netns exec uplink ip link | grep -q 'nd-net.test'
+! ip netns exec uplink ip route | grep -q 192.168.2.0/24
+! ip netns exec nonsense:net.test ip route | grep -q default
+
+# check that restarting the service also works correctly
+systemctl start nonsense-connection@net.test.service
+systemctl is-system-running
+
+ip netns exec uplink ip link | grep -q 'nd-net.test'
+ip netns exec uplink ip route | grep 192.168.2.0/24 | grep -q 'dev nd-net.test'
+ip netns exec nonsense:net.test ip route | grep default | grep -q 'dev nb-test'
+
+ip netns exec nonsense:net.test ping -c 1 -W 1 192.168.2.1
+ip netns exec nonsense:net.test ping -c 1 -W 1 10.0.0.1
+ip netns exec uplink ping -c 1 -W 1 192.168.2.2
+
+# vim: ft=sh
+

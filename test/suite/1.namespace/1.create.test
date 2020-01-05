@@ -1,8 +1,8 @@
 systemctl start nonsense-netns@test.service
 
-systemctl is-system-running
 systemctl status nonsense-netns@test.service
 systemctl status nonsense-test.slice
+systemctl is-system-running
 
 ip netns | grep -q '^nonsense:test$'
 

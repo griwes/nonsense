@@ -1,6 +1,7 @@
 install(
-    FILES
-        info.griwes.nonsense.conf
+    DIRECTORY
+        system.d
+        system-services
     DESTINATION
         ${NONSENSE_DBUS_CONFIG_PREFIX}
 )

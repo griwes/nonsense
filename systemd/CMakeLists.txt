@@ -1,3 +1,9 @@
+macro(install_symlink filepath sympath)
+    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${filepath} ${sympath})")
+    install(CODE "message(\"-- Created symlink: ${sympath} -> ${filepath}\")")
+endmacro(install_symlink)
+
+
 file(
     GLOB templates
     RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -41,4 +47,17 @@ install(
         nonsense-.slice.d
     DESTINATION
         ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}
+)
+
+install(
+    PROGRAMS
+        nonsense-connection-setup
+        nonsense-connection-teardown
+    DESTINATION
+        bin
+)
+
+install_symlink(
+    ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}/nonsensed.service
+    ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}/dbus-info.griwes.nonsense.service
 )

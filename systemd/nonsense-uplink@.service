@@ -22,5 +22,5 @@ Environment=DOWNLINK=nd-%i
 ExecStart=/usr/bin/env ip link add ${UPLINK} type veth peer ${DOWNLINK}
 ExecStart=/usr/bin/env ip link set ${UPLINK} up
 
-ExecStop=/usr/bin/env ip link delete ${UPLINK}
+ExecStopPost=/usr/bin/env ip link delete ${UPLINK}
 

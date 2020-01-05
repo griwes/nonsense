@@ -23,7 +23,8 @@ namespace nonsensed
 {
 inline std::string_view error_prefix()
 {
-    static bool is_systemd_service = std::string_view(std::getenv("NONSENSED_MODE")) == "systemd_service";
+    static char * nonsensed_mode = std::getenv("NONSENSED_MODE");
+    static bool is_systemd_service = nonsensed_mode && std::string_view(nonsensed_mode) == "systemd_service";
     return is_systemd_service ? std::string_view("<3>") : std::string_view("");
 }
 }

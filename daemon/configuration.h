@@ -16,10 +16,14 @@
 
 #pragma once
 
-extern "C"
-{
-    struct sd_bus_slot;
-}
+#include "config.h"
+#include "transactions.h"
+
+#include <cstdint>
+#include <map>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace nonsensed
 {
@@ -33,6 +37,10 @@ public:
     void install(const service & srv);
 
 private:
-    sd_bus_slot * _slot = nullptr;
+    dbus_slot _bus_slot;
+
+    config _saved_config;
+    config _running_config;
+    transactions _transaction_manager;
 };
 }

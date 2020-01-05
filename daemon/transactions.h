@@ -16,29 +16,39 @@
 
 #pragma once
 
-extern "C"
-{
-    struct sd_bus;
-}
+#include <cstdint>
+#include <map>
+#include <memory>
+
+#include "dbus.h"
 
 namespace nonsensed
 {
-class options;
-class configuration;
+class service;
+class config;
+class transaction;
 
-class service
+class transactions
 {
 public:
-    service(const options & opts, configuration & config_object);
+    transactions(config & saved, config & running);
+    ~transactions();
 
-    void loop();
+    void install(const service & srv, const char * dbus_path);
 
-    sd_bus * bus() const
-    {
-        return _bus;
-    }
+    DECLARE_METHOD(list);
+    DECLARE_METHOD(new);
+    DECLARE_METHOD(commit);
+    DECLARE_METHOD(discard);
 
 private:
-    sd_bus * _bus = nullptr;
+    config & _saved_config;
+    config & _running_config;
+
+    const service * _srv;
+    dbus_slot _bus_slot;
+
+    std::map<std::uint64_t, std::unique_ptr<transaction>> _transactions;
 };
 }
+

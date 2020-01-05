@@ -30,6 +30,7 @@ try
     auto config = nonsensed::configuration(opts);
     auto service = nonsensed::service(opts, config);
     auto control = nonsensed::controller(opts, config, service);
+    (void)control;
 
     service.loop();
 

@@ -16,29 +16,29 @@
 
 #pragma once
 
-extern "C"
-{
-    struct sd_bus;
-}
+#include <systemd/sd-bus.h>
 
 namespace nonsensed
 {
-class options;
-class configuration;
-
-class service
+class dbus_slot
 {
 public:
-    service(const options & opts, configuration & config_object);
-
-    void loop();
-
-    sd_bus * bus() const
+    auto operator&()
     {
-        return _bus;
+        return &_slot;
+    }
+
+    auto operator&() const
+    {
+        return &_slot;
+    }
+
+    ~dbus_slot()
+    {
+        sd_bus_slot_unref(_slot);
     }
 
 private:
-    sd_bus * _bus = nullptr;
+    sd_bus_slot * _slot = nullptr;
 };
 }

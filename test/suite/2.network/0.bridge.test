@@ -1,0 +1,26 @@
+# check that the service starts successfully
+systemctl start nonsense-network@test.service
+
+systemctl status nonsense-network@test.service
+systemctl is-system-running
+
+ip netns exec nonsense:net.test ip link
+
+ip netns exec nonsense:net.test ip link | grep 'nb-test' | grep -q 'BROADCAST,MULTICAST,UP'
+ip netns exec nonsense:net.test ip link | grep 'nu-net.test' | grep -q 'master nb-test '
+
+# check that it shuts down successfully
+systemctl stop nonsense-network@test.service
+systemctl is-system-running
+
+! ip netns exec nonsense:net.test ip link | grep -q 'nb-test'
+! ip netns exec nonsense:net.test ip link | grep 'nu-net.test' | grep -q 'master'
+
+# and that restarting it also works correctly
+systemctl start nonsense-network@test.service
+systemctl is-system-running
+
+ip netns exec nonsense:net.test ip link | grep 'nb-test' | grep -q 'BROADCAST,MULTICAST,UP'
+ip netns exec nonsense:net.test ip link | grep 'nu-net.test' | grep -q 'master nb-test '
+
+# vim: ft=sh

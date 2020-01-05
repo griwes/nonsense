@@ -6,3 +6,6 @@ sudo -E apt-get update
 sudo -E apt-get -y full-upgrade
 sudo -E apt-get -y install git docker.io
 
+sudo mkdir /cache
+sudo chown ${USER}:${USER} /cache
+

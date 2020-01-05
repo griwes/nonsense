@@ -24,5 +24,5 @@ ExecStart=/usr/bin/env ip netns add ${NETNS}
 ExecStart=/usr/bin/env umount /var/run/netns/${NETNS}
 ExecStart=/usr/bin/env mount --bind /proc/self/ns/net /var/run/netns/${NETNS}
 
-ExecStop=/usr/bin/env ip netns delete ${NETNS}
+ExecStopPost=/usr/bin/env ip netns delete ${NETNS}
 
