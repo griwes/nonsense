@@ -85,13 +85,13 @@ do
     fi
 
     echo
-    echo "### ${configuration}: build"
+    echo "### $(date) ### ${configuration}: build"
     if ! sudo docker build ${DOCKER_BUILD_PULL} \
         --build-arg=RELEASE=${release} \
         -f test/docker/${distro}.Dockerfile \
         --tag nonsense/${configuration} .
     then
-        echo "### ${configuration}: build failure" | tee -a ${tmpdir}/results
+        echo "### $(date) ### ${configuration}: build failure" | tee -a ${tmpdir}/results
         continue
     fi
 
@@ -103,7 +103,7 @@ do
         fi
 
         echo
-        echo "### ${configuration}: ${test}: running..."
+        echo "### $(date) ### ${configuration}: ${test}: running..."
 
         fatal=0
         flags=
@@ -130,7 +130,7 @@ do
                 systemctl is-system-running --wait && systemctl status
             ' >/dev/null
         then
-            echo "### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
+            echo "### $(date) ### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
         elif sudo docker exec ${container} bash -c "
                 bash -ex /nonsense/test/suite/${test} 2>&1 \
                     || {
@@ -144,15 +144,15 @@ do
                     }
             " >${tmpdir}/log
         then
-            echo "### ${configuration}: ${test}: success"
+            echo "### $(date) ### ${configuration}: ${test}: success"
         else
             cat ${tmpdir}/log
             if [[ -f test/suite/${test}.fatal ]]
             then
-                echo "### ${configuration}: ${test}: fatal failure" | tee -a ${tmpdir}/results
+                echo "### $(date) ### ${configuration}: ${test}: fatal failure" | tee -a ${tmpdir}/results
                 fatal=1
             else
-                echo "### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
+                echo "### $(date) ### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
             fi
         fi
         sudo docker kill ${container} >/dev/null
