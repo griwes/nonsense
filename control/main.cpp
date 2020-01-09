@@ -255,26 +255,26 @@ void get_handler(const cxxopts::ParseResult & result)
     }
 }
 
-struct property_validity
+struct parameter_validity
 {
     bool is_valid = true;
     std::string_view expected_message;
 };
 
-using property_validator = std::function<property_validity(std::string_view)>;
+using parameter_validator = std::function<parameter_validity(std::string_view)>;
 
-struct property_information
+struct parameter_information
 {
-    property_validator validator = +[](std::string_view) { return property_validity{ true, "" }; };
+    parameter_validator validator = +[](std::string_view) { return parameter_validity{ true, "" }; };
 };
 
 struct entity_kind_information
 {
     std::uint8_t numeric_id;
-    std::unordered_map<std::string_view, property_information> known_parameters;
+    std::unordered_map<std::string_view, parameter_information> known_parameters;
 };
 
-property_validator set_validator(std::vector<std::string_view> allowed_values)
+parameter_validator set_validator(std::vector<std::string_view> allowed_values)
 {
     std::unordered_set<std::string_view> set{ allowed_values.begin(), allowed_values.end() };
     std::string expected_message = "'" + std::string(allowed_values.front()) + "'";
@@ -288,7 +288,7 @@ property_validator set_validator(std::vector<std::string_view> allowed_values)
     }
 
     return [set = std::move(set),
-            message = std::move(expected_message)](std::string_view value) -> property_validity {
+            message = std::move(expected_message)](std::string_view value) -> parameter_validity {
         if (set.count(value))
         {
             return { true, "" };
