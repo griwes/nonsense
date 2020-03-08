@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,19 @@
 
 #include <systemd/sd-bus.h>
 
+#include <utility>
+
 namespace nonsensed
 {
 class dbus_slot
 {
 public:
+    dbus_slot() = default;
+
+    dbus_slot(dbus_slot && other) : _slot{ std::exchange(other._slot, nullptr) }
+    {
+    }
+
     auto operator&()
     {
         return &_slot;
@@ -34,6 +42,11 @@ public:
     }
 
     ~dbus_slot()
+    {
+        reset();
+    }
+
+    void reset()
     {
         sd_bus_slot_unref(_slot);
     }

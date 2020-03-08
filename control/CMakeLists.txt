@@ -18,6 +18,7 @@ set_target_properties(
 target_link_libraries(
     nonsensectl
     ${SYSTEMD_LDFLAGS}
+    ${CMAKE_DL_LIBS}
 )
 
 install(

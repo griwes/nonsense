@@ -4,7 +4,13 @@ set -e
 
 known_configurations=(
     debian-clang:{testing,unstable}
-    ubuntu-clang:{rolling,devel}
+    debian-gcc10:{testing,unstable}
+
+    ubuntu-clang:{eoan,focal,devel}
+    ubuntu-gcc10:{focal,devel}
+
+    fedora-clang:{31,32,rawhide}
+    fedora-gcc:{32,rawhide}
 )
 
 tmpdir=$(mktemp -d)
@@ -86,6 +92,12 @@ do
 
     echo
     echo "### $(date) ### ${configuration}: build"
+
+    rm -rf ./cache
+    sudo mkdir -p /cache/${configuration}
+    sudo chown ${USER}:${USER} /cache/${configuration}
+    cp -a /cache/${configuration} ./cache
+
     if ! sudo docker build ${DOCKER_BUILD_PULL} \
         --build-arg=RELEASE=${release} \
         -f test/docker/${distro}.Dockerfile \
@@ -94,6 +106,12 @@ do
         echo "### $(date) ### ${configuration}: build failure" | tee -a ${tmpdir}/results
         continue
     fi
+
+    sudo docker run --rm \
+        --mount type=bind,source=/cache/${configuration},destination=/host-cache \
+        nonsense/${configuration} \
+        cp -a /nonsense/cache/. /host-cache
+    CCACHE_DIR=/cache/${configuration} ccache --cleanup
 
     for test in $(find test/suite -name "*.test" | sed 's:^test/suite/::' | sort -n)
     do
@@ -112,6 +130,7 @@ do
             flags=$(test/suite/${test}.setup pre ${tmpdir})
         fi
 
+        mkdir -p "/cache/${configuration}"
         container=$(sudo docker run --rm -d \
             --privileged \
             --tmpfs /run \
@@ -135,7 +154,7 @@ do
                 bash -ex /nonsense/test/suite/${test} 2>&1 \
                     || {
                         printf '\nNonsense services status:\n'
-                        systemctl status 'nonsense*.service'
+                        systemctl status 'nonsense*'
 
                         printf '\nNonsense journal entries:\n'
                         journalctl -u 'nonsense*'
@@ -168,6 +187,8 @@ do
         fi
     done
 done
+
+sudo docker system prune -f
 
 if [[ -f ${tmpdir}/results ]]
 then

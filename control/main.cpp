@@ -62,6 +62,40 @@ struct verb_information
 };
 extern std::unordered_map<std::string_view, verb_information> recognized_verbs;
 
+nonsensed::kind_and_name parse_kind_and_name(
+    const std::vector<std::string> & arguments,
+    std::size_t expected_extra_args,
+    std::string_view command_name)
+{
+    if (arguments.size() == 1 + expected_extra_args)
+    {
+        auto attempt = nonsensed::try_parse_prefixed_name(arguments[0]);
+        if (!attempt)
+        {
+            // TODO: further validation of name validity
+            attempt = { nonsensed::entity_kind::namespace_, arguments[0] };
+        }
+
+        return std::move(attempt.value());
+    }
+
+    if (arguments.size() == 2 + expected_extra_args)
+    {
+        if (auto maybe_kind = nonsensed::try_singular_to_kind(arguments[0]))
+        {
+            return nonsensed::kind_and_name{ maybe_kind.value(), arguments[1] };
+        }
+    }
+
+    std::cerr << "Error: unrecognized arguments to " << command_name << ":";
+    for (auto && arg : arguments)
+    {
+        std::cerr << ' ' << arg;
+    }
+    std::cerr << '\n';
+    std::exit(1);
+}
+
 void help_handler(const cxxopts::ParseResult & result)
 {
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
@@ -126,7 +160,7 @@ void get_transaction_token(const std::vector<std::string> & arguments)
         &error,
         &message,
         "");
-    HANDLE_DBUS_ERROR("Failed to issue method call", result, error);
+    HANDLE_DBUS_ERROR("Method call failed", result, error);
 
     std::uint64_t token;
     const char * transaction_path;
@@ -142,45 +176,8 @@ void get_transaction_token(const std::vector<std::string> & arguments)
 
 void get_property(const std::vector<std::string> & arguments)
 {
-    bool valid = false;
-    nonsensed::kind_and_name target;
-    std::string property;
-
-    if (arguments.size() == 2)
-    {
-        auto attempt = nonsensed::try_parse_prefixed_name(arguments[0]);
-        if (!attempt)
-        {
-            // TODO: further validation of name validity
-            attempt = { nonsensed::entity_kind::namespace_, arguments[0] };
-        }
-
-        target = std::move(attempt.value());
-        property = arguments[1];
-        valid = true;
-    }
-
-    else if (arguments.size() == 3)
-    {
-        if (auto maybe_kind = nonsensed::try_singular_to_kind(arguments[0]))
-        {
-            target.kind = maybe_kind.value();
-            target.name = arguments[1];
-            property = arguments[2];
-            valid = true;
-        }
-    }
-
-    if (!valid)
-    {
-        std::cerr << "Error: unrecognized arguments to get:";
-        for (auto && arg : arguments)
-        {
-            std::cerr << ' ' << arg;
-        }
-        std::cerr << '\n';
-        std::exit(1);
-    }
+    auto target = parse_kind_and_name(arguments, 1, "get");
+    std::string property = arguments[arguments.size() - 1];
 
     using nonsensed::entity_kind;
 
@@ -191,7 +188,9 @@ void get_property(const std::vector<std::string> & arguments)
         { "uplink-address-masked", { entity_kind::namespace_, entity_kind::network } },
         { "uplink-bridge", { entity_kind::namespace_ } },
         { "uplink-device", { entity_kind::namespace_, entity_kind::network } },
+        { "uplink-netns", { entity_kind::namespace_, entity_kind::network } },
         { "uplink-entity", { entity_kind::namespace_, entity_kind::network } },
+        { "network-address", { entity_kind::network } }
     };
 
     auto property_it = valid_properties.find(property);
@@ -226,7 +225,7 @@ void get_property(const std::vector<std::string> & arguments)
         target.kind,
         target.name.c_str(),
         property.c_str());
-    HANDLE_DBUS_ERROR("Failed to issue method call", status, error);
+    HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     const char * response;
     status = sd_bus_message_read(message, "s", &response);
@@ -299,9 +298,11 @@ parameter_validator set_validator(std::vector<std::string_view> allowed_values)
 
 std::unordered_map<std::string_view, entity_kind_information> known_entity_kinds = {
     { "namespace",
-      { 1, { { "type", { .validator = set_validator({ "netns", "netns-external", "netns-default" }) } } } } },
+      { 1,
+        { { "type", { .validator = set_validator({ "netns", "netns-external", "netns-default" }) } },
+          { "role", { .validator = set_validator({ "client", "router", "root" }) } } } } },
     { "network", { 2, { { "address", {} }, { "uplink", {} } } } },
-    { "interface", {} }
+    { "interface", { 3 } }
 };
 
 void add_handler(const cxxopts::ParseResult & result)
@@ -383,7 +384,7 @@ void add_handler(const cxxopts::ParseResult & result)
     sd_bus_error error = SD_BUS_ERROR_NULL;
     sd_bus_message * reply = nullptr;
     status = sd_bus_call(dbus, message, 0, &error, &reply);
-    HANDLE_DBUS_ERROR("Failed to issue method call", status, error);
+    HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     status = sd_bus_message_read(message, "");
     HANDLE_DBUS_RESULT("Failed to parse response message", status);
@@ -448,7 +449,7 @@ void finalize_handler(const cxxopts::ParseResult & result)
         &message,
         "t",
         token);
-    HANDLE_DBUS_ERROR("Failed to issue method call", status, error);
+    HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     status = sd_bus_message_read(message, "");
     HANDLE_DBUS_RESULT("Failed to parse response message", status);
@@ -463,38 +464,11 @@ enum class locking
 template<locking Mode>
 void locking_handler(const cxxopts::ParseResult & result)
 {
-    nonsensed::kind_and_name target = {};
-    bool valid = false;
     const char * name = Mode == locking::lock ? "lock" : "unlock";
 
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
 
-    if (arguments.size() == 1)
-    {
-        target = nonsensed::parse_prefixed_name(arguments[0]);
-        valid = true;
-    }
-
-    else if (arguments.size() == 2)
-    {
-        if (auto maybe_kind = nonsensed::try_singular_to_kind(arguments[0]))
-        {
-            target.kind = maybe_kind.value();
-            target.name = arguments[1];
-            valid = true;
-        }
-    }
-
-    if (!valid)
-    {
-        std::cerr << "Error: unrecognized arguments to " << name << ":";
-        for (auto && arg : arguments)
-        {
-            std::cerr << ' ' << arg;
-        }
-        std::cerr << '\n';
-        std::exit(1);
-    }
+    auto target = parse_kind_and_name(arguments, 0, name);
 
     dbus_connect();
 
@@ -512,7 +486,68 @@ void locking_handler(const cxxopts::ParseResult & result)
         "ys",
         target.kind,
         target.name.c_str());
-    HANDLE_DBUS_ERROR("Failed to issue method call", status, error);
+    HANDLE_DBUS_ERROR("Method call failed", status, error);
+
+    status = sd_bus_message_read(message, "");
+    HANDLE_DBUS_RESULT("Failed to parse response message", status);
+}
+
+enum class action
+{
+    start,
+    stop,
+    restart,
+    status
+};
+
+template<action Mode>
+void action_handler(const cxxopts::ParseResult & result)
+{
+    const char * name;
+    const char * dbus_method;
+    switch (Mode)
+    {
+        case action::start:
+            name = "start";
+            dbus_method = "Start";
+            break;
+        case action::stop:
+            name = "stop";
+            dbus_method = "Stop";
+            break;
+        case action::restart:
+            name = "restart";
+            dbus_method = "Restart";
+            break;
+        case action::status:
+            name = "status";
+            dbus_method = "Status";
+            break;
+        default:
+            __builtin_unreachable();
+    }
+
+    auto arguments = result["command-arguments"].as<std::vector<std::string>>();
+
+    auto target = parse_kind_and_name(arguments, 0, name);
+
+    dbus_connect();
+
+    sd_bus_error error = SD_BUS_ERROR_NULL;
+    sd_bus_message * message = nullptr;
+
+    int status = sd_bus_call_method(
+        dbus,
+        dbus_service,
+        (dbus_path_prefix + "").c_str(),
+        "info.griwes.nonsense.Controller",
+        dbus_method,
+        &error,
+        &message,
+        "ys",
+        target.kind,
+        target.name.c_str());
+    HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     status = sd_bus_message_read(message, "");
     HANDLE_DBUS_RESULT("Failed to parse response message", status);
@@ -521,12 +556,18 @@ void locking_handler(const cxxopts::ParseResult & result)
 std::unordered_map<std::string_view, verb_information> recognized_verbs = {
     { "help", { help_handler } },
     { "version", { version_handler } },
+
     { "get", { get_handler } },
     { "add", { add_handler } },
+
     { "commit", { finalize_handler<finalize::commit> } },
     { "discard", { finalize_handler<finalize::discard> } },
+
     { "lock", { locking_handler<locking::lock> } },
-    { "unlock", { locking_handler<locking::unlock> } }
+    { "unlock", { locking_handler<locking::unlock> } },
+
+    { "start", { action_handler<action::start> } },
+    { "stop", { action_handler<action::stop> } }
 };
 
 int main(int argc, char ** argv)
@@ -573,7 +614,6 @@ try
     if (handler_it == recognized_verbs.end())
     {
         std::cerr << "Error: Unknown command verb specified: " << verb << ".\n";
-        help_handler(result);
         return 1;
     }
 

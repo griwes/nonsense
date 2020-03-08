@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,16 @@ class configuration
 public:
     configuration(const options & opts);
     void install(const service & srv);
+
+    config & running()
+    {
+        return _running_config;
+    }
+
+    const config & running() const
+    {
+        return _running_config;
+    }
 
 private:
     dbus_slot _bus_slot;

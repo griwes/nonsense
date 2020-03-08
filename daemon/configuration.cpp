@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,15 +101,6 @@
  *     No return values.
  *     Semantics: adds an operation of removing an entity from the configuration to the transaction. The
  * entity to delete's kind is identified by the first argument; the name by the second.
- *
- * info.griwes.nonsense.Namespace
- * ==============================
- *
- * info.griwes.nonsense.Network
- * ============================
- *
- * info.griwes.nonsense.Interface
- * ==============================
  */
 
 /**

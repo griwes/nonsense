@@ -1,0 +1,63 @@
+TARGET_IP=${TARGET_IP}
+IMMEDIATE=${IMMEDIATE:-0}
+
+# setup the nonsense configuration
+token=$(nonsensectl get new-transaction-token)
+nonsensectl -t ${token} add network test address 192.168.2.0/24 uplink ${UPLINK}
+nonsensectl -t ${token} commit
+
+# check that the service starts successfully
+nonsensectl start net.test
+systemctl is-system-running
+
+# setup the uplink IP
+${UPLINK_EXEC} ip addr add ${TARGET_IP}/32 dev lo
+
+${UPLINK_EXEC} ip link
+${UPLINK_EXEC} ip addr
+${UPLINK_EXEC} ip route
+ip netns exec nonsense:net.test ip link
+ip netns exec nonsense:net.test ip addr
+ip netns exec nonsense:net.test ip route
+
+# test devices and routes
+if [[ "${IMMEDIATE}" -eq 1 ]]
+then
+    ${UPLINK_EXEC} ip link | grep -q 'nd-net.test'
+    ${UPLINK_EXEC} ip route | grep 192.168.2.0/24 | grep -q 'dev nd-net.test'
+fi
+ip netns exec nonsense:net.test ip route | grep default | grep -q 'dev nb-test'
+
+# test connectivity
+ip netns exec nonsense:net.test ping -c 1 -W 1 192.168.2.1
+ip netns exec nonsense:net.test ping -c 1 -W 1 ${TARGET_IP}
+${UPLINK_EXEC} ping -c 1 -W 1 192.168.2.2
+
+# check tha the service shuts down successfully
+nonsensectl stop net.test
+systemctl is-system-running
+
+if [[ "${IMMEDIATE}" -eq 1 ]]
+then
+    ! ${UPLINK_EXEC} ip link | grep -q 'nd-net.test'
+    ! ${UPLINK_EXEC} ip route | grep -q 192.168.2.0/24
+fi
+! ip netns exec nonsense:net.test ip route | grep -q default
+
+# check that restarting the service also works correctly
+nonsensectl start net.test
+systemctl is-system-running
+
+if [[ "${IMMEDIATE}" -eq 1 ]]
+then
+    ${UPLINK_EXEC} ip link | grep -q 'nd-net.test'
+    ${UPLINK_EXEC} ip route | grep 192.168.2.0/24 | grep -q 'dev nd-net.test'
+fi
+ip netns exec nonsense:net.test ip route | grep default | grep -q 'dev nb-test'
+
+ip netns exec nonsense:net.test ping -c 1 -W 1 192.168.2.1
+ip netns exec nonsense:net.test ping -c 1 -W 1 ${TARGET_IP}
+${UPLINK_EXEC} ping -c 1 -W 1 192.168.2.2
+
+# vim: ft=sh
+

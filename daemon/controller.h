@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "dbus.h"
+
 extern "C"
 {
     struct sd_bus_slot;
@@ -24,15 +26,21 @@ extern "C"
 namespace nonsensed
 {
 class options;
+class config;
 class configuration;
 class service;
 
 class controller
 {
 public:
-    controller(const options & opts, configuration & config_object, const service & srv);
+    controller(const options & opts, configuration & configuration_object, const service & srv);
+
+    DECLARE_METHOD(start);
+    DECLARE_METHOD(stop);
 
 private:
+    const service & _srv;
     sd_bus_slot * _slot = nullptr;
+    config & _config;
 };
 }

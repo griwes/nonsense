@@ -5,8 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get -yq full-upgrade
 
-RUN apt-get install -yq build-essential pkg-config cmake libsystemd-dev systemd iproute2 iw nftables bind9 \
-    iputils-ping clang libc++1 libc++abi1 libc++-dev \
+RUN apt-get update \
+    && apt-get install -yq build-essential pkg-config cmake libsystemd-dev systemd iproute2 iw nftables bind9 \
+        iputils-ping \
+        ccache clang libc++1 libc++abi1 libc++-dev \
     && rm -rf /etc/systemd/system/*
 
 # le sigh
@@ -17,9 +19,11 @@ RUN systemctl mask serial-getty@ttyS0.service
 COPY . /nonsense
 WORKDIR /nonsense
 
+ENV CCACHE_DIR=/nonsense/cache
+ENV CCACHE_COMPILERCHECK=content
 RUN rm -rf build \
     && mkdir build \
     && cd build \
-    && CXX="clang++ -stdlib=libc++" LD="clang++ -stdlib=libc++" cmake .. \
+    && CXX="ccache clang++ -stdlib=libc++" LD="ccache clang++ -stdlib=libc++" cmake .. \
     && make install -j$(nproc)
 

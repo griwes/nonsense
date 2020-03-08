@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "async.h"
 #include "bus_slot.h"
 #include "log_helpers.h"
 
@@ -23,7 +24,7 @@
 
 #define DECLARE_METHOD(name)                                                                                 \
     static int method_##name(sd_bus_message *, void *, sd_bus_error *);                                      \
-    int method_##name##_impl(sd_bus_message *, sd_bus_error *)
+    nonsensed::future method_##name##_impl(sd_bus_message *, sd_bus_error *)
 
 #define DECLARE_PROPERTY_GET(name)                                                                           \
     static int property_##name##_get(                                                                        \
@@ -42,7 +43,8 @@
 #define DEFINE_METHOD(class, name)                                                                           \
     int class ::method_##name(sd_bus_message * message, void * userdata, sd_bus_error * error)               \
     {                                                                                                        \
-        return static_cast<class *>(userdata)->method_##name##_impl(message, error);                         \
+        static_cast<class *>(userdata)->method_##name##_impl(message, error);                                \
+        return 1;                                                                                            \
     }
 
 #define DEFINE_PROPERTY_GET(class, name)                                                                     \
@@ -76,7 +78,7 @@
 // member signature macros
 
 #define METHOD_SIGNATURE(class, name)                                                                        \
-    int class ::method_##name##_impl(sd_bus_message * message, sd_bus_error * error)
+    future class ::method_##name##_impl(sd_bus_message * message, sd_bus_error * error)
 
 #define PROPERTY_GET_SIGNATURE(class, name)                                                                  \
     int class ::property_##name##_get_impl(                                                                  \
@@ -95,13 +97,3 @@
         const char * property,                                                                               \
         sd_bus_message * value,                                                                              \
         sd_bus_error * error)
-
-// various macros
-
-#define HANDLE_DBUS_ERROR_RET(message, status)                                                               \
-    if (status < 0)                                                                                          \
-    {                                                                                                        \
-        std::cerr << error_prefix() << "Error: " << message << ": " << strerror(-status) << '\n';            \
-        return -status;                                                                                      \
-    }
-
