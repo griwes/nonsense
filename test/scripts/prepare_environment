@@ -12,3 +12,6 @@ sudo -E apt-get -y install git docker.io
 sudo mkdir /cache
 sudo chown ${USER}:${USER} /cache
 
+sudo systemctl unmask docker.service
+sudo systemctl enable docker.service
+sudo systemctl start docker.service
