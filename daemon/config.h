@@ -18,6 +18,7 @@
 
 #include "common_definitions.h"
 #include "dbus.h"
+#include "function.h"
 
 #include <json.hpp>
 
@@ -30,8 +31,24 @@ namespace nonsensed
 class options;
 class service;
 
+class config;
+
 class entity
 {
+public:
+    subtask start();
+    subtask stop();
+
+private:
+    friend class config;
+
+    entity(config & config_object, nlohmann::json & self, entity_kind kind, std::string_view name);
+
+    config & _config;
+    nlohmann::json & _self;
+
+    entity_kind _kind;
+    std::string _name;
 };
 
 struct config_result
@@ -66,6 +83,8 @@ struct property_result
 class config
 {
 public:
+    friend class entity;
+
     config(const config & other);
     config(const options & opts);
 
@@ -73,7 +92,7 @@ public:
 
     void install(const service & srv, const char * dbus_path);
 
-    std::optional<entity> try_get(entity_kind kind, std::string_view name) const noexcept;
+    std::optional<entity> try_get(entity_kind kind, std::string_view name) noexcept;
     config_result add(
         entity_kind kind,
         std::string name,
@@ -84,6 +103,7 @@ public:
     DECLARE_METHOD(get);
 
 private:
+    const service * _srv = nullptr;
     dbus_slot _config_slot;
     bool _mutable;
 
@@ -101,7 +121,9 @@ private:
     template<bool Masked>
     CONFIG_DECLARE_PROPERTY(uplink_address);
     CONFIG_DECLARE_PROPERTY(uplink_device);
+    CONFIG_DECLARE_PROPERTY(uplink_netns);
     CONFIG_DECLARE_PROPERTY(uplink_entity);
+    CONFIG_DECLARE_PROPERTY(network_address);
 
     using _property_handler_t = decltype(&config::_handle_property_uplink_entity);
 };

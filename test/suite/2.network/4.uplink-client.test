@@ -1,0 +1,8 @@
+token=$(nonsensectl get new-transaction-token)
+nonsensectl -t ${token} add namespace uplink type netns-default role client
+nonsensectl -t ${token} add network test address 192.168.2.0/24 uplink ns.uplink
+! (nonsensectl -t ${token} commit \
+    && echo 'this should fail, because a client namespace should not be allowed as an uplink')
+
+# vim: ft=sh
+

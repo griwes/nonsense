@@ -41,7 +41,9 @@ Probably not yet, but I'm just a README, not your parent.
 Build requirements are as follows:
 
   * CMake 3.12 or higher;
-  * a C++20 compiler with coroutines support (as of Dec '19, this means Clang 5 or higher, with libc++);
+  * a C++20 compiler with coroutines support (as of Apr '20, this means GCC 10 or higher or Clang 7 or higher;
+  Clang 5 and 6 both support coroutines, but they do not support promise constructor parameter preview, which
+  is a feature that's used extensively in Nonsense),
   * libsystemd, version 242 or higher (based on the systems Nonsense is tested on).
 
 ### ...to run it?

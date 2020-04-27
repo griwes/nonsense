@@ -4,6 +4,19 @@ project(nonsense CXX)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 20)
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    if ("${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 10.0.0)
+        message(FATAL_ERROR "Your compiler does not support C++ coroutines;
+            the earliest GCC version to do so is GCC 10.")
+    endif()
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines-ts")
+else ()
+    message(FATAL_ERROR "Your compiler has no known way of enabling C++ coroutines.")
+endif()
+
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "/usr" CACHE STRING
         "Install path prefix, prepended onto install directories." FORCE)

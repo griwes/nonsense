@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include "log_helpers.h"
 #include "service.h"
 
+#include <asm-generic/errno-base.h>
 #include <cassert>
 #include <iomanip>
 #include <iostream>
@@ -66,7 +67,7 @@ transaction::transaction(std::uint64_t id, const service & srv, uid_t owner) : _
 
 METHOD_SIGNATURE(transaction, serialize)
 {
-    return -1;
+    co_return reply_status(-ENOSYS);
 }
 
 METHOD_SIGNATURE(transaction, add)
@@ -77,60 +78,57 @@ METHOD_SIGNATURE(transaction, add)
     __attribute__((cleanup(sd_bus_creds_unrefp))) sd_bus_creds * creds = nullptr;
     status = sd_bus_query_sender_creds(message, SD_BUS_CREDS_UID | SD_BUS_CREDS_AUGMENT, &creds);
     assert(status >= 0);
-    status = sd_bus_creds_get_uid(creds, &owner);
-    HANDLE_DBUS_ERROR_RET("Failed to get the originating uid of a message", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_creds_get_uid(creds, &owner), "Failed to get the originating uid of a message");
 
     if (owner != _owner && owner != 0)
     {
-        sd_bus_error_set_const(
-            error,
+        co_return reply_status_const(
+            -EACCES,
             "info.griwes.nonsense.AccessDenied",
             "You do not have permissions to modify this transaction.");
-        return -EACCES;
     }
 
     entity_kind kind;
     const char * name;
 
-    status = sd_bus_message_read(message, "ys", &kind, &name);
-    HANDLE_DBUS_ERROR_RET("Failed to parse parameters", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_message_read(message, "ys", &kind, &name), "Failed to parse parameters");
 
     add operation{ kind, name, {} };
 
-    status = sd_bus_message_enter_container(message, SD_BUS_TYPE_ARRAY, "(ss)");
-    HANDLE_DBUS_ERROR_RET("Failed to enter container", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_message_enter_container(message, SD_BUS_TYPE_ARRAY, "(ss)"), "Failed to enter container");
 
     while ((status = sd_bus_message_enter_container(message, SD_BUS_TYPE_STRUCT, "ss")) > 0)
     {
         const char * parameter;
         const char * value;
 
-        status = sd_bus_message_read(message, "ss", &parameter, &value);
-        HANDLE_DBUS_ERROR_RET("Failed to parse parameters", status);
+        co_yield log_and_reply_on_error(
+            sd_bus_message_read(message, "ss", &parameter, &value), "Failed to parse parameters");
 
         operation.initial_parameters.push_back({ parameter, value });
 
-        status = sd_bus_message_exit_container(message);
-        HANDLE_DBUS_ERROR_RET("Failed to exit struct", status);
+        co_yield log_and_reply_on_error(sd_bus_message_exit_container(message), "Failed to exit struct");
     }
-    HANDLE_DBUS_ERROR_RET("Failed to enter struct", status);
+    co_yield log_and_reply_on_error(status, "Failed to enter struct");
 
-    status = sd_bus_message_exit_container(message);
-    HANDLE_DBUS_ERROR_RET("Failed to exit container", status);
+    co_yield log_and_reply_on_error(sd_bus_message_exit_container(message), "Failed to exit container");
 
     _operations.push_back(operation);
 
-    return sd_bus_reply_method_return(message, "");
+    co_return reply_status(sd_bus_reply_method_return(message, ""));
 }
 
 METHOD_SIGNATURE(transaction, set)
 {
-    return -1;
+    co_return reply_status(-ENOSYS);
 }
 
 METHOD_SIGNATURE(transaction, delete)
 {
-    return -1;
+    co_return reply_status(-ENOSYS);
 }
 
 PROPERTY_GET_SIGNATURE(transaction, owner)

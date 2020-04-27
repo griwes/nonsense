@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,13 +71,14 @@ void transactions::install(const service & srv, const char * dbus_path)
 
 METHOD_SIGNATURE(transactions, list)
 {
-    return -1;
+    co_return reply_status(-ENOSYS);
 }
+
+static std::random_device dev;
+static std::mt19937 engine(dev());
 
 METHOD_SIGNATURE(transactions, new)
 {
-    static std::random_device dev;
-    static std::mt19937 engine(dev());
     auto rand = [] {
         using dist = std::uniform_int_distribution<std::uint64_t>;
         return dist()(engine);
@@ -85,8 +86,7 @@ METHOD_SIGNATURE(transactions, new)
 
     int status;
 
-    status = sd_bus_message_read(message, "");
-    HANDLE_DBUS_ERROR_RET("Failed to parse parameters", status);
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, ""), "Failed to parse parameters");
 
     std::uint64_t id = rand();
     while (_transactions.count(id))
@@ -98,14 +98,14 @@ METHOD_SIGNATURE(transactions, new)
     __attribute__((cleanup(sd_bus_creds_unrefp))) sd_bus_creds * creds = nullptr;
     status = sd_bus_query_sender_creds(message, SD_BUS_CREDS_UID | SD_BUS_CREDS_AUGMENT, &creds);
     assert(status >= 0);
-    status = sd_bus_creds_get_uid(creds, &owner);
-    HANDLE_DBUS_ERROR_RET("Failed to get the originating uid of a message", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_creds_get_uid(creds, &owner), "Failed to get the originating uid of a message");
 
     auto [it, ins] =
         _transactions.emplace(std::make_pair(id, std::make_unique<transaction>(id, *_srv, owner)));
     assert(ins);
 
-    return sd_bus_reply_method_return(message, "to", id, it->second->object_path());
+    co_return reply_status(sd_bus_reply_method_return(message, "to", id, it->second->object_path()));
 }
 
 METHOD_SIGNATURE(transactions, commit)
@@ -113,33 +113,30 @@ METHOD_SIGNATURE(transactions, commit)
     std::uint64_t id;
     int status;
 
-    status = sd_bus_message_read(message, "t", &id);
-    HANDLE_DBUS_ERROR_RET("Failed to parse parameters", status);
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, "t", &id), "Failed to parse parameters");
 
     auto it = _transactions.find(id);
     if (it == _transactions.end())
     {
-        sd_bus_error_set_const(
-            error,
+        co_return reply_status_const(
+            -EINVAL,
             "info.griwes.nonsense.InvalidTransactionId",
             "The transaction ID requested to be committed is not valid.");
-        return -EINVAL;
     }
 
     uid_t owner;
     __attribute__((cleanup(sd_bus_creds_unrefp))) sd_bus_creds * creds = nullptr;
     status = sd_bus_query_sender_creds(message, SD_BUS_CREDS_UID | SD_BUS_CREDS_AUGMENT, &creds);
     assert(status >= 0);
-    status = sd_bus_creds_get_uid(creds, &owner);
-    HANDLE_DBUS_ERROR_RET("Failed to get the originating uid of a message", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_creds_get_uid(creds, &owner), "Failed to get the originating uid of a message");
 
     if (owner != it->second->owner() && owner != 0)
     {
-        sd_bus_error_set_const(
-            error,
+        co_return reply_status_const(
+            -EACCES,
             "info.griwes.nonsense.AccessDenied",
             "You do not have permissions to commit this transaction.");
-        return -EACCES;
     }
 
     auto running_copy = _running_config;
@@ -181,14 +178,15 @@ METHOD_SIGNATURE(transactions, commit)
     {
         if ((status = std::visit(visitor, operation)) != 0)
         {
-            return status;
+            co_return reply_status(status, error);
         }
     }
 
     _running_config = running_copy;
 
-    sd_bus_reply_method_return(message, "");
-    return 0;
+    _transactions.erase(it);
+
+    co_return reply_status(sd_bus_reply_method_return(message, ""));
 }
 
 METHOD_SIGNATURE(transactions, discard)
@@ -196,37 +194,34 @@ METHOD_SIGNATURE(transactions, discard)
     std::uint64_t id;
     int status;
 
-    status = sd_bus_message_read(message, "t", &id);
-    HANDLE_DBUS_ERROR_RET("Failed to parse parameters", status);
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, "t", &id), "Failed to parse parameters");
 
     auto it = _transactions.find(id);
     if (it == _transactions.end())
     {
-        sd_bus_error_set_const(
-            error,
+        co_return reply_status_const(
+            -EINVAL,
             "info.griwes.nonsense.InvalidTransactionId",
             "The transaction ID requested to be discarded is not valid.");
-        return -EINVAL;
     }
 
     uid_t owner;
     __attribute__((cleanup(sd_bus_creds_unrefp))) sd_bus_creds * creds = nullptr;
     status = sd_bus_query_sender_creds(message, SD_BUS_CREDS_UID | SD_BUS_CREDS_AUGMENT, &creds);
     assert(status >= 0);
-    status = sd_bus_creds_get_uid(creds, &owner);
-    HANDLE_DBUS_ERROR_RET("Failed to get the originating uid of a message", status);
+    co_yield log_and_reply_on_error(
+        sd_bus_creds_get_uid(creds, &owner), "Failed to get the originating uid of a message");
 
     if (owner != it->second->owner() && owner != 0)
     {
-        sd_bus_error_set_const(
-            error,
+        co_return reply_status_const(
+            -EACCES,
             "info.griwes.nonsense.AccessDenied",
             "You do not have permissions to modify this transaction.");
-        return -EACCES;
     }
 
     _transactions.erase(id);
 
-    return sd_bus_reply_method_return(message, "");
+    co_return reply_status(sd_bus_reply_method_return(message, ""));
 }
 }

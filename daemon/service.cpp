@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,25 @@ service::service(const options & opts, configuration & config_object)
     {
         throw std::runtime_error(std::string("Failed to acquire service name: ") + strerror(-ret));
     }
+
+    sd_bus_error error = SD_BUS_ERROR_NULL;
+    sd_bus_message * message = nullptr;
+
+    ret = sd_bus_call_method(
+        _bus,
+        "org.freedesktop.systemd1",
+        "/org/freedesktop/systemd1",
+        "org.freedesktop.systemd1.Manager",
+        "Subscribe",
+        &error,
+        &message,
+        "");
+    if (ret < 0)
+    {
+        throw std::runtime_error(std::string("Failed to subscribe to systemd signals: ") + strerror(-ret));
+    }
+
+    sd_bus_message_unref(message);
 
     config_object.install(*this);
 }

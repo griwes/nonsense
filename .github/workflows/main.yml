@@ -13,8 +13,22 @@ jobs:
         - "debian-clang:testing"
         - "debian-clang:unstable"
 
-        - "ubuntu-clang:rolling"
+        - "debian-gcc10:testing"
+        - "debian-gcc10:unstable"
+
+        - "ubuntu-clang:eoan"
+        - "ubuntu-clang:focal"
         - "ubuntu-clang:devel"
+
+        - "ubuntu-gcc10:focal"
+        - "ubuntu-gcc10:devel"
+
+        - "fedora-clang:31"
+        - "fedora-clang:32"
+        - "fedora-clang:rawhide"
+
+        - "fedora-gcc:32"
+        - "fedora-gcc:rawhide"
 
     runs-on: ubuntu-latest
 
