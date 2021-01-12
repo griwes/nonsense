@@ -42,21 +42,6 @@ install(
         ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}
 )
 
-install(
-    DIRECTORY
-        nonsense-.slice.d
-    DESTINATION
-        ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}
-)
-
-install(
-    PROGRAMS
-        nonsense-connection-setup
-        nonsense-connection-teardown
-    DESTINATION
-        bin
-)
-
 install_symlink(
     ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}/nonsensed.service
     ${NONSENSE_SYSTEMD_SYSTEM_PREFIX}/dbus-info.griwes.nonsense.service

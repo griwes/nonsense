@@ -1,6 +1,0 @@
-[Unit]
-Description=Nonsense namespace engine router namespace target for %I
-
-Requires=nonsense-router@%i.service
-Wants=nonsense-connection@%i.service
-After=nonsense-router@%i.service nonsense-connection@%i.service

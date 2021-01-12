@@ -1,3 +1,10 @@
+set(NONSENSE_GENERATED_BANNER "/* !!! THIS IS A GENERATED FILE, DO NOT MODIFY !!! */")
+
+configure_file(
+    paths.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/nonsense-paths.h"
+)
+
 file(
     GLOB sources
     CONFIGURE_DEPENDS
@@ -12,7 +19,7 @@ add_executable(
 set_target_properties(
     nonsensed
     PROPERTIES
-        COMPILE_FLAGS "${SYSTEMD_CFLAGS}"
+        COMPILE_FLAGS "${SYSTEMD_CFLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 
 target_link_libraries(

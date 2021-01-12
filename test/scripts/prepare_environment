@@ -2,6 +2,7 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
+sudo -E apt-mark hold grub-*
 sudo -E apt-get update
 if [[ "${SKIP_UPGRADE}" -ne 1 ]]
 then

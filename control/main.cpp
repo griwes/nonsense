@@ -62,40 +62,6 @@ struct verb_information
 };
 extern std::unordered_map<std::string_view, verb_information> recognized_verbs;
 
-nonsensed::kind_and_name parse_kind_and_name(
-    const std::vector<std::string> & arguments,
-    std::size_t expected_extra_args,
-    std::string_view command_name)
-{
-    if (arguments.size() == 1 + expected_extra_args)
-    {
-        auto attempt = nonsensed::try_parse_prefixed_name(arguments[0]);
-        if (!attempt)
-        {
-            // TODO: further validation of name validity
-            attempt = { nonsensed::entity_kind::namespace_, arguments[0] };
-        }
-
-        return std::move(attempt.value());
-    }
-
-    if (arguments.size() == 2 + expected_extra_args)
-    {
-        if (auto maybe_kind = nonsensed::try_singular_to_kind(arguments[0]))
-        {
-            return nonsensed::kind_and_name{ maybe_kind.value(), arguments[1] };
-        }
-    }
-
-    std::cerr << "Error: unrecognized arguments to " << command_name << ":";
-    for (auto && arg : arguments)
-    {
-        std::cerr << ' ' << arg;
-    }
-    std::cerr << '\n';
-    std::exit(1);
-}
-
 void help_handler(const cxxopts::ParseResult & result)
 {
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
@@ -176,36 +142,8 @@ void get_transaction_token(const std::vector<std::string> & arguments)
 
 void get_property(const std::vector<std::string> & arguments)
 {
-    auto target = parse_kind_and_name(arguments, 1, "get");
+    auto & name = arguments.front();
     std::string property = arguments[arguments.size() - 1];
-
-    using nonsensed::entity_kind;
-
-    std::unordered_map<std::string_view, std::unordered_set<entity_kind>> valid_properties = {
-        { "downlink-address", { entity_kind::namespace_, entity_kind::network } },
-        { "downlink-address-masked", { entity_kind::namespace_, entity_kind::network } },
-        { "uplink-address", { entity_kind::namespace_, entity_kind::network } },
-        { "uplink-address-masked", { entity_kind::namespace_, entity_kind::network } },
-        { "uplink-bridge", { entity_kind::namespace_ } },
-        { "uplink-device", { entity_kind::namespace_, entity_kind::network } },
-        { "uplink-netns", { entity_kind::namespace_, entity_kind::network } },
-        { "uplink-entity", { entity_kind::namespace_, entity_kind::network } },
-        { "network-address", { entity_kind::network } }
-    };
-
-    auto property_it = valid_properties.find(property);
-    if (property_it == valid_properties.end())
-    {
-        std::cerr << "Error: unknown property: " << property << '\n';
-        std::exit(1);
-    }
-
-    if (!property_it->second.count(target.kind))
-    {
-        std::cerr << "Error: property " << property << " is not valid for the entity kind "
-                  << nonsensed::kind_to_singular(target.kind) << '\n';
-        std::exit(1);
-    }
 
     dbus_connect();
 
@@ -221,9 +159,8 @@ void get_property(const std::vector<std::string> & arguments)
         "Get",
         &error,
         &message,
-        "yss",
-        target.kind,
-        target.name.c_str(),
+        "ss",
+        name.c_str(),
         property.c_str());
     HANDLE_DBUS_ERROR("Method call failed", status, error);
 
@@ -296,34 +233,12 @@ parameter_validator set_validator(std::vector<std::string_view> allowed_values)
     };
 }
 
-std::unordered_map<std::string_view, entity_kind_information> known_entity_kinds = {
-    { "namespace",
-      { 1,
-        { { "type", { .validator = set_validator({ "netns", "netns-external", "netns-default" }) } },
-          { "role", { .validator = set_validator({ "client", "router", "root" }) } } } } },
-    { "network", { 2, { { "address", {} }, { "uplink", {} } } } },
-    { "interface", { 3 } }
-};
-
 void add_handler(const cxxopts::ParseResult & result)
 {
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
     if (arguments.size() < 2)
     {
         std::cerr << "Error: Not enough arguments for command add\n";
-        std::exit(1);
-    }
-
-    if (arguments.size() % 2 != 0)
-    {
-        std::cerr << "Error: Invalid (odd) number of arguments for command add\n";
-        std::exit(1);
-    }
-
-    auto kind_it = known_entity_kinds.find(arguments[0]);
-    if (kind_it == known_entity_kinds.end())
-    {
-        std::cerr << "Error: Invalid entity kind: " << arguments[0] << '\n';
         std::exit(1);
     }
 
@@ -345,34 +260,24 @@ void add_handler(const cxxopts::ParseResult & result)
         dbus, &message, dbus_service, dbus_path.c_str(), dbus_interface, "Add");
     HANDLE_DBUS_RESULT("Failed to create a dbus method call message", status);
 
-    status = sd_bus_message_append(message, "ys", kind_it->second.numeric_id, arguments[1].c_str());
+    status = sd_bus_message_append(message, "s", arguments[0].c_str());
     HANDLE_DBUS_RESULT("Failed to append to a message", status);
 
     status = sd_bus_message_open_container(message, SD_BUS_TYPE_ARRAY, "(ss)");
     HANDLE_DBUS_RESULT("Failed to open a container", status);
 
-    auto & known_params = kind_it->second.known_parameters;
-    for (std::size_t i = 2; i < arguments.size(); i += 2)
+    for (std::size_t i = 1; i < arguments.size(); ++i)
     {
-        std::string_view parameter = arguments[i];
-        std::string_view value = arguments[i + 1];
-
-        auto param_info_it = known_params.find(parameter);
-        if (param_info_it == known_params.end())
+        auto & argument = arguments[i];
+        auto eq_pos = argument.find('=');
+        if (eq_pos == std::string::npos)
         {
-            std::cerr << "Error: Parameter '" << parameter << "' is not a valid parameter for entity kind '"
-                      << arguments[0] << "'\n";
+            std::cerr << "Invalid argument '" << argument << "', must be in form 'parameter-name=value'.\n";
             std::exit(1);
         }
 
-        auto validity = param_info_it->second.validator(value);
-        if (!validity.is_valid)
-        {
-            std::cerr << "Error: The value '" << value << "' is not a valid value for parameter '"
-                      << parameter << "' of entity kind '" << arguments[0] << "'; expected "
-                      << validity.expected_message << '\n';
-            std::exit(1);
-        }
+        auto parameter = argument.substr(0, eq_pos);
+        auto value = argument.substr(eq_pos + 1);
 
         status = sd_bus_message_append(message, "(ss)", parameter.data(), value.data());
         HANDLE_DBUS_RESULT("Failed to append to a container", status);
@@ -464,11 +369,9 @@ enum class locking
 template<locking Mode>
 void locking_handler(const cxxopts::ParseResult & result)
 {
-    const char * name = Mode == locking::lock ? "lock" : "unlock";
-
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
 
-    auto target = parse_kind_and_name(arguments, 0, name);
+    auto & name = arguments.front();
 
     dbus_connect();
 
@@ -483,9 +386,8 @@ void locking_handler(const cxxopts::ParseResult & result)
         Mode == locking::lock ? "Lock" : "Unlock",
         &error,
         &message,
-        "ys",
-        target.kind,
-        target.name.c_str());
+        "s",
+        name.c_str());
     HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     status = sd_bus_message_read(message, "");
@@ -503,24 +405,19 @@ enum class action
 template<action Mode>
 void action_handler(const cxxopts::ParseResult & result)
 {
-    const char * name;
     const char * dbus_method;
     switch (Mode)
     {
         case action::start:
-            name = "start";
             dbus_method = "Start";
             break;
         case action::stop:
-            name = "stop";
             dbus_method = "Stop";
             break;
         case action::restart:
-            name = "restart";
             dbus_method = "Restart";
             break;
         case action::status:
-            name = "status";
             dbus_method = "Status";
             break;
         default:
@@ -529,7 +426,7 @@ void action_handler(const cxxopts::ParseResult & result)
 
     auto arguments = result["command-arguments"].as<std::vector<std::string>>();
 
-    auto target = parse_kind_and_name(arguments, 0, name);
+    auto & name = arguments.front();
 
     dbus_connect();
 
@@ -544,9 +441,8 @@ void action_handler(const cxxopts::ParseResult & result)
         dbus_method,
         &error,
         &message,
-        "ys",
-        target.kind,
-        target.name.c_str());
+        "s",
+        name.c_str());
     HANDLE_DBUS_ERROR("Method call failed", status, error);
 
     status = sd_bus_message_read(message, "");

@@ -1,12 +1,15 @@
 # set the test parameters
-export UPLINK_EXEC=""
+export UPLINK_EXEC="ip netns exec uplink"
 export TARGET_IP=10.0.0.1
-export UPLINK="ns.uplink"
+export UPLINK="uplink"
 export IMMEDIATE=1
+
+# create the uplink namespace
+ip netns add uplink
 
 # setup nonsense
 token=$(nonsensectl get new-transaction-token)
-nonsensectl -t ${token} add namespace uplink type netns-default role root
+nonsensectl -t ${token} add uplink network.role=root network.external=true
 nonsensectl -t ${token} commit
 
 # run the test
@@ -14,4 +17,3 @@ test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 bash -exu "${test_dir}/uplink.template"
 
 # vim: ft=sh
-

@@ -56,6 +56,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 add_subdirectory(daemon)        # for nonsensed
+add_subdirectory(entityd)       # for entityd
 add_subdirectory(control)       # for nonsensectl
 add_subdirectory(dbus)          # for install targets of dbus configuration files
 add_subdirectory(systemd)       # for install targets of systemd units

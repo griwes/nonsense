@@ -1,12 +1,12 @@
 # set the test parameters
-export UPLINK_EXEC="ip netns exec nonsense:uplink"
+export UPLINK_EXEC=""
 export TARGET_IP=10.0.0.1
-export UPLINK="ns.uplink"
+export UPLINK="uplink"
 export IMMEDIATE=1
 
 # setup nonsense
 token=$(nonsensectl get new-transaction-token)
-nonsensectl -t ${token} add namespace uplink type netns role root
+nonsensectl -t ${token} add uplink network.role=root network.default=true
 nonsensectl -t ${token} commit
 
 # run the test

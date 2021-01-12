@@ -1,4 +1,4 @@
-ARG RELEASE=rawehide
+ARG RELEASE=rawhide
 FROM fedora:${RELEASE}
 
 RUN dnf upgrade -y

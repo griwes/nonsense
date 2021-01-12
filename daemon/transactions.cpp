@@ -143,19 +143,18 @@ METHOD_SIGNATURE(transactions, commit)
 
     auto visitor =
         overload{ [&](transaction::add add) {
-                     auto entity = running_copy.try_get(add.kind, add.name);
+                     auto entity = running_copy.try_get(add.name);
                      if (entity)
                      {
                          sd_bus_error_setf(
                              error,
                              "info.griwes.nonsense.EntityAlreadyExists",
-                             "The transaction attempted to create an entity that already exists: %s.%s.",
-                             kind_to_prefix(add.kind),
+                             "The transaction attempted to create an entity that already exists: %s.",
                              add.name.c_str());
                          return -EEXIST;
                      }
 
-                     auto [result, message] = running_copy.add(add.kind, add.name, add.initial_parameters);
+                     auto [result, message] = running_copy.add(add.name, add.initial_parameters);
                      if (result < 0)
                      {
                          sd_bus_error_set(
