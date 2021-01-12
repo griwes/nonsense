@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,120 +16,36 @@
 
 #pragma once
 
-#include <cstdint>
-#include <optional>
-#include <stdexcept>
 #include <string>
-#include <string_view>
+#include <unordered_map>
 
 namespace nonsensed
 {
-enum class entity_kind : std::uint8_t
+enum class component_type
 {
-    namespace_ = 1,
-    network = 2,
-    interface = 3
+    network
 };
 
-inline const char * kind_to_prefix(entity_kind kind)
-{
-    switch (kind)
-    {
-        case entity_kind::namespace_:
-            return "ns";
-        case entity_kind::network:
-            return "net";
-        case entity_kind::interface:
-            return "int";
-    }
-
-    __builtin_unreachable();
-}
-
-inline const char * kind_to_singular(entity_kind kind)
-{
-    switch (kind)
-    {
-        case entity_kind::namespace_:
-            return "namespace";
-        case entity_kind::network:
-            return "network";
-        case entity_kind::interface:
-            return "interface";
-    }
-
-    __builtin_unreachable();
-}
-
-inline const char * kind_to_plural(entity_kind kind)
-{
-    switch (kind)
-    {
-        case entity_kind::namespace_:
-            return "namespaces";
-        case entity_kind::network:
-            return "networks";
-        case entity_kind::interface:
-            return "interfaces";
-    }
-
-    __builtin_unreachable();
-}
-
-inline std::optional<entity_kind> try_singular_to_kind(std::string_view singular)
-{
-    if (singular == "namespace")
-    {
-        return std::make_optional(entity_kind::namespace_);
-    }
-    if (singular == "network")
-    {
-        return std::make_optional(entity_kind::network);
-    }
-    if (singular == "interface")
-    {
-        return std::make_optional(entity_kind::interface);
-    }
-
-    return std::nullopt;
-}
-
-struct kind_and_name
-{
-    entity_kind kind;
-    std::string name;
+inline const std::unordered_map<std::string_view, component_type> known_components = {
+    { "network", component_type::network }
 };
 
-inline std::optional<kind_and_name> try_parse_prefixed_name(std::string_view prefixed)
+enum class network_role
 {
-    if (prefixed.starts_with("ns."))
-    {
-        return { { entity_kind::namespace_, std::string(prefixed.substr(3)) } };
-    }
+    root,
+    interface,
+    router,
+    switch_,
+    client
+};
 
-    if (prefixed.starts_with("net."))
-    {
-        return { { entity_kind::network, std::string(prefixed.substr(4)) } };
-    }
-
-    if (prefixed.starts_with("int."))
-    {
-        return { { entity_kind::interface, std::string(prefixed.substr(4)) } };
-    }
-
-    return std::nullopt;
-}
-
-inline kind_and_name parse_prefixed_name(std::string_view prefixed)
-{
-    auto attempt = try_parse_prefixed_name(prefixed);
-    if (attempt)
-    {
-        return std::move(attempt.value());
-    }
-
-    throw std::runtime_error("No valid prefix found in a prefixed name " + std::string(prefixed) + ".");
-}
+inline const std::unordered_map<std::string_view, network_role> known_network_roles = {
+    { "root", network_role::root },
+    { "interface", network_role::interface },
+    { "router", network_role::router },
+    { "switch", network_role::switch_ },
+    { "client", network_role::client }
+};
 
 struct parameter_value
 {

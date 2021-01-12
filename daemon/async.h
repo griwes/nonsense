@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Michał 'Griwes' Dominiak
+ * Copyright © 2020-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <tuple>
 #include <variant>
 #include <vector>
@@ -131,7 +132,9 @@ inline maybe_reply_status_t log_and_reply_on_error(int code, const char * messag
 {
     if (code < 0)
     {
-        std::cerr << error_prefix() << "Error: " << message << ": " << strerror(-code) << '\n';
+        std::ostringstream os;
+        os << error_prefix() << "Error: " << message << ": " << strerror(-code) << '\n';
+        std::cerr << os.str();
     }
     return { code };
 }
@@ -179,12 +182,12 @@ public:
             _payload);
     }
 
-    coro::suspend_never initial_suspend()
+    coro::suspend_never initial_suspend() noexcept
     {
         return {};
     }
 
-    coro::suspend_never final_suspend()
+    coro::suspend_never final_suspend() noexcept
     {
         return {};
     }
@@ -343,12 +346,23 @@ struct service_description
 
 namespace services
 {
+    namespace dbus
+    {
+        inline service_description local = { .service = "org.freedesktop.DBus.Local",
+                                             .dbus_path = "/org/freedesktop/DBus/Local",
+                                             .interface = "org.freedesktop.DBus.Local" };
+    }
+
     namespace systemd
     {
         inline service_description manager = { .service = "org.freedesktop.systemd1",
                                                .dbus_path = "/org/freedesktop/systemd1",
                                                .interface = "org.freedesktop.systemd1.Manager" };
     }
+
+    inline service_description entityd = { .service = "info.griwes.nonsense",
+                                           .dbus_path = "/",
+                                           .interface = "info.griwes.nonsense.Entityd" };
 }
 
 template<typename... Arguments>
@@ -361,6 +375,17 @@ struct signal_description
 
 namespace signals
 {
+    namespace dbus
+    {
+        inline signal_description<> connected = { .service = services::dbus::local,
+                                                  .name = "Connected",
+                                                  .argument_string = "" };
+
+        inline signal_description<> disconnected = { .service = services::dbus::local,
+                                                     .name = "Disconnected",
+                                                     .argument_string = "" };
+    }
+
     namespace systemd
     {
         inline signal_description<std::uint32_t, const char *, const char *, const char *> job_removed = {
@@ -403,37 +428,41 @@ namespace async
 
                 std::apply(
                     [&](Ts... ts) {
-                        assert(
-                            sd_bus_call_method_async(
-                                bus,
-                                nullptr,
-                                service.service,
-                                service.dbus_path,
-                                service.interface,
-                                method,
-                                +[](sd_bus_message * message, void * userdata, sd_bus_error * ret_error) {
-                                    auto & self = *static_cast<awaitable_t *>(userdata);
+                        int r = sd_bus_call_method_async(
+                            bus,
+                            nullptr,
+                            service.service,
+                            service.dbus_path,
+                            service.interface,
+                            method,
+                            +[](sd_bus_message * message, void * userdata, sd_bus_error * ret_error) {
+                                auto & self = *static_cast<awaitable_t *>(userdata);
 
-                                    if (sd_bus_message_is_method_error(message, nullptr))
-                                    {
-                                        self.handle.promise().return_value(reply_status(
-                                            -sd_bus_message_get_errno(message),
-                                            sd_bus_message_get_error(message)));
-                                        self.handle.destroy();
-
-                                        return 1;
-                                    }
-
-                                    sd_bus_message_ref(message);
-                                    self.message = message;
-                                    self.handle();
+                                if (sd_bus_message_is_method_error(message, nullptr))
+                                {
+                                    self.handle.promise().return_value(reply_status(
+                                        -sd_bus_message_get_errno(message),
+                                        sd_bus_message_get_error(message)));
+                                    self.handle.destroy();
 
                                     return 1;
-                                },
-                                this,
-                                argument_string,
-                                ts...)
-                            >= 0);
+                                }
+
+                                sd_bus_message_ref(message);
+                                self.message = message;
+                                self.handle();
+
+                                return 1;
+                            },
+                            this,
+                            argument_string,
+                            ts...);
+
+                        if (r < 0)
+                        {
+                            std::cerr << "Failed to issue a method call: " << strerror(-r) << '\n';
+                            std::abort();
+                        }
                     },
                     arguments);
             }
@@ -471,40 +500,42 @@ namespace async
 
                         // The loop below is, addmittedly, written in a very weird way. Let me explain.
                         //
-                        // First of all, we're trying to roughly follow the sd_bus handler mechanics, where
-                        // returning a positive result means that the message has been handled. In that case,
-                        // since the callbacks are one-shot, we want to clear the element out of the set of
-                        // callbacks we want to handle, so that we don't try to invoke it the next time -
-                        // probably because it was a coroutine continuation and those are one shot.
+                        // First of all, we're trying to roughly follow the sd_bus handler mechanics,
+                        // where returning a positive result means that the message has been handled. In
+                        // that case, since the callbacks are one-shot, we want to clear the element out
+                        // of the set of callbacks we want to handle, so that we don't try to invoke it
+                        // the next time - probably because it was a coroutine continuation and those are
+                        // one shot.
                         //
-                        // *However*, if this was done naively (like I did initially), i.e. just by calling
-                        // erase inside the early return branch, there's... a problem. Since, in the intended
-                        // use case, a matched signal would cause *the coroutine that owns the subscription*
-                        // to resume, it may also... cause it to end, destroying the subscription. That's bad,
-                        // because it'd cause the call to erase to reach into an already destroyed vector.
-                        // Oops.
+                        // *However*, if this was done naively (like I did initially), i.e. just by
+                        // calling erase inside the early return branch, there's... a problem. Since, in
+                        // the intended use case, a matched signal would cause *the coroutine that owns
+                        // the subscription* to resume, it may also... cause it to end, destroying the
+                        // subscription. That's bad, because it'd cause the call to erase to reach into an
+                        // already destroyed vector. Oops.
                         //
-                        // So, what do we do to achieve the same effect? Well, we first check if the entry has
-                        // already been cleared, if so then there's nothing for us to do. Then, we replace the
-                        // entry with an empty one, speculatively. It gets restored if the callback didn't
-                        // return a positive value, in which case we want to continue looping (and *hopefully*
-                        // there isn't a bug where the coroutine is destroyed yet a non-positive value is
-                        // provided). If the handler did match, however, we take advantage of the speculative
-                        // clear - to effectively clear an entry in a potentially-already-gone vector, without
-                        // touching the memory of said vector at all.
+                        // So, what do we do to achieve the same effect? Well, we first check if the entry
+                        // has already been cleared, if so then there's nothing for us to do. Then, we
+                        // replace the entry with an empty one, speculatively. It gets restored if the
+                        // callback didn't return a positive value, in which case we want to continue
+                        // looping (and *hopefully* there isn't a bug where the coroutine is destroyed yet
+                        // a non-positive value is provided). If the handler did match, however, we take
+                        // advantage of the speculative clear - to effectively clear an entry in a
+                        // potentially-already-gone vector, without touching the memory of said vector at
+                        // all.
                         //
                         // There's two conditions under which this breaks, one already mentioned:
                         //   1. The callback ends up destroying the current coroutine and therefore this
-                        //   subscription, but returns 0 or less. In this case, the swap after the branch will
-                        //   reach into deallocated memory. Should be checkable with ASAN.
-                        //   2. The callback ends up *inserting* a new callback into the set, but - again -
-                        //   returns 0 or less. In this case the effect is the same if the vector reallocates
-                        //   its buffer; again, checkable with ASAN.
+                        //   subscription, but returns 0 or less. In this case, the swap after the branch
+                        //   will reach into deallocated memory. Should be checkable with ASAN.
+                        //   2. The callback ends up *inserting* a new callback into the set, but - again
+                        //   - returns 0 or less. In this case the effect is the same if the vector
+                        //   reallocates its buffer; again, checkable with ASAN.
                         //
-                        // Both of those result from an error where someone inserted a callback that does not
-                        // behave correctly into the callback queue; if that's you, you should feel bad. This
-                        // is not something we should need to check for too hard, because the callback queue
-                        // is internal and only populated by `match`.
+                        // Both of those result from an error where someone inserted a callback that does
+                        // not behave correctly into the callback queue; if that's you, you should feel
+                        // bad. This is not something we should need to check for too hard, because the
+                        // callback queue is internal and only populated by `match`.
 
                         for (auto it = self._callbacks.begin(), end = self._callbacks.end(); it != end; ++it)
                         {
@@ -537,8 +568,8 @@ namespace async
             void * userdata;
         };
 
-        template<std::size_t KeyIndex, typename Key>
-        auto match(Key key)
+        template<std::size_t KeyIndex = std::size_t(-1), typename Key = int>
+        auto match(Key key = 0)
         {
             struct awaitable_t
             {
@@ -572,7 +603,25 @@ namespace async
                                  arguments);
                              sd_bus_message_rewind(message, true);
 
-                             if (self.key == std::get<KeyIndex>(arguments))
+                             auto matches = [&] {
+                                 if constexpr (KeyIndex == -1)
+                                 {
+                                     return true;
+                                 }
+                                 else
+                                 {
+                                     if (self.key == std::get<KeyIndex>(arguments))
+                                     {
+                                         return true;
+                                     }
+                                     else
+                                     {
+                                         return false;
+                                     }
+                                 }
+                             }();
+
+                             if (matches)
                              {
                                  sd_bus_message_ref(message);
                                  self.message = message;

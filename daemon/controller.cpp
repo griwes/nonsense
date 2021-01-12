@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,21 +28,10 @@
  *
  * info.griwes.nonsense.Entity
  * ===========================
- * Properties:
- *  - Kind :: readonly y
- *    Describes the kind of the entity:
- *      1 - namespace
- *      2 - network
- *      3 - interface
  *
- * info.griwes.nonsense.Namespace
+ * info.griwes.nonsense.Component
  * ==============================
  *
- * info.griwes.nonsense.Network
- * ============================
- *
- * info.griwes.nonsense.Interface
- * ==============================
  */
 
 /**
@@ -61,13 +50,6 @@
  * Interface:
  *  - info.griwes.nonsense.Controller
  *
- * /info/griwes/nonsense/entity/...
- * ================================
- * Interfaces:
- *  - info.griwes.nonsense.Entity
- *  - info.griwes.nonsense.Namespace (if type is netns)
- *  - info.griwes.nonsense.Network (if type is network)
- *  - info.griwes.nonsense.Interface (if type is interface)
  */
 
 #include "controller.h"
@@ -89,8 +71,8 @@ DEFINE_METHOD(controller, stop);
 static const sd_bus_vtable controller_vtable[] = {
     SD_BUS_VTABLE_START(0),
 
-    SD_BUS_METHOD("Start", "ys", "", controller::method_start, SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Stop", "ys", "", controller::method_stop, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Start", "s", "", controller::method_start, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Stop", "s", "", controller::method_stop, SD_BUS_VTABLE_UNPRIVILEGED),
 
     SD_BUS_VTABLE_END
 };
@@ -111,32 +93,19 @@ controller::controller(const options & opts, configuration & configuration_objec
 
 METHOD_SIGNATURE(controller, start)
 {
-    entity_kind kind;
     const char * name;
 
-    co_yield log_and_reply_on_error(
-        sd_bus_message_read(message, "ys", &kind, &name), "Failed to parse parameters");
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, "s", &name), "Failed to parse parameters");
 
-    std::optional<entity> ent = _config.try_get(kind, name);
+    std::optional<entity> ent = _config.try_get(name);
 
     if (!ent)
     {
-        if (kind == entity_kind::namespace_ && std::string_view(name) == "default")
-        {
-            co_return reply_status_const(
-                -ENOENT,
-                "info.griwes.nonsense.NoSuchEntity",
-                "Attempted to start the default netns, which is not configured with nonsense.");
-        }
-        else
-        {
-            co_return reply_status_format(
-                -ENOENT,
-                "info.griwes.nonsense.NoSuchEntity",
-                "Attempted to start an entity that does not exist: %s.%s.",
-                kind_to_prefix(kind),
-                name);
-        }
+        co_return reply_status_format(
+            -ENOENT,
+            "info.griwes.nonsense.NoSuchEntity",
+            "Attempted to start an entity that does not exist: %s.",
+            name);
     }
 
     co_await ent->start();
@@ -145,32 +114,19 @@ METHOD_SIGNATURE(controller, start)
 
 METHOD_SIGNATURE(controller, stop)
 {
-    entity_kind kind;
     const char * name;
 
-    co_yield log_and_reply_on_error(
-        sd_bus_message_read(message, "ys", &kind, &name), "Failed to parse parameters");
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, "s", &name), "Failed to parse parameters");
 
-    std::optional<entity> ent = _config.try_get(kind, name);
+    std::optional<entity> ent = _config.try_get(name);
 
     if (!ent)
     {
-        if (kind == entity_kind::namespace_ && std::string_view(name) == "default")
-        {
-            co_return reply_status_const(
-                -ENOENT,
-                "info.griwes.nonsense.NoSuchEntity",
-                "Attempted to stop the default netns, which is not configured with nonsense.");
-        }
-        else
-        {
-            co_return reply_status_format(
-                -ENOENT,
-                "info.griwes.nonsense.NoSuchEntity",
-                "Attempted to stop an entity that does not exist: %s.%s.",
-                kind_to_prefix(kind),
-                name);
-        }
+        co_return reply_status_format(
+            -ENOENT,
+            "info.griwes.nonsense.NoSuchEntity",
+            "Attempted to stop an entity that does not exist: %s.",
+            name);
     }
 
     co_await ent->stop();

@@ -1,7 +1,0 @@
-[Unit]
-Description=Nonsense namespace engine client namespace target for %I
-
-Requires=nonsense-uplink@%i.service
-Wants=nonsense-connection@%i.service
-After=nonsense-uplink@%i.service nonsense-connection@%i.service
-

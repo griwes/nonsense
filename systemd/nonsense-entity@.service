@@ -1,0 +1,14 @@
+[Unit[
+Description=Service to start a nonsense entity %I
+
+BindsTo=nonsensed.service
+After=nonsensed.service
+
+[Service]
+Type=oneshot
+
+SyslogIdentifier=nonsense-entity:%I
+
+ExecStart=/usr/bin/env nonsensectl start $I
+ExecStop=/usr/bin/env nonsensectl stop %I
+

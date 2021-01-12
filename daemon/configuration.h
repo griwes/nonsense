@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ class configuration
 {
 public:
     configuration(const options & opts);
-    void install(const service & srv);
+    void install(service & srv);
 
     config & running()
     {

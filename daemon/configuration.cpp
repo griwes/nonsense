@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -168,7 +168,7 @@ configuration::configuration(const options & opts)
 {
 }
 
-void configuration::install(const service & srv)
+void configuration::install(service & srv)
 {
     const char * dbus_path = "/info/griwes/nonsense/configuration";
     int ret = sd_bus_add_object_vtable(

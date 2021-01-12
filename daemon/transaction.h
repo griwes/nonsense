@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2020 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,21 +31,18 @@ class transaction
 public:
     struct add
     {
-        entity_kind kind;
         std::string name;
         std::vector<parameter_value> initial_parameters;
     };
 
     struct set
     {
-        entity_kind kind;
         std::string name;
         std::vector<parameter_value> modification;
     };
 
     struct delete_
     {
-        entity_kind kind;
         std::string name;
     };
 

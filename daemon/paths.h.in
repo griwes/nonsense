@@ -1,3 +1,5 @@
+// clang-format off
+
 /*
  * Copyright © 2021 Michał 'Griwes' Dominiak
  *
@@ -13,4 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+@NONSENSE_GENERATED_BANNER@
+
+#include <filesystem>
+
+namespace nonsensed
+{
+    inline std::filesystem::path install_prefix = "@CMAKE_INSTALL_PREFIX@";
+}
 

@@ -6,11 +6,11 @@ known_configurations=(
     debian-clang:{testing,unstable}
     debian-gcc10:{testing,unstable}
 
-    ubuntu-clang:{eoan,focal,devel}
-    ubuntu-gcc10:{focal,devel}
+    ubuntu-clang:{latest,rolling,devel}
+    ubuntu-gcc10:{latest,rolling,devel}
 
-    fedora-clang:{31,32,rawhide}
-    fedora-gcc:{32,rawhide}
+    fedora-clang:{31,32,latest,rawhide}
+    fedora-gcc:{32,latest,rawhide}
 )
 
 tmpdir=$(mktemp -d)
@@ -157,7 +157,7 @@ do
                         systemctl status 'nonsense*'
 
                         printf '\nNonsense journal entries:\n'
-                        journalctl -u 'nonsense*'
+                        journalctl -a -u 'nonsense*'
 
                         false
                     }

@@ -38,9 +38,9 @@ static const sd_bus_vtable transaction_vtable[] = {
     SD_BUS_VTABLE_START(0),
 
     SD_BUS_METHOD("Serialize", "", "s", transaction::method_serialize, SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Add", "ysa(ss)", "", transaction::method_add, SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Set", "ys(ss)", "", transaction::method_set, SD_BUS_VTABLE_UNPRIVILEGED),
-    SD_BUS_METHOD("Delete", "ys", "", transaction::method_delete, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Add", "sa(ss)", "", transaction::method_add, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Set", "s(ss)", "", transaction::method_set, SD_BUS_VTABLE_UNPRIVILEGED),
+    SD_BUS_METHOD("Delete", "s", "", transaction::method_delete, SD_BUS_VTABLE_UNPRIVILEGED),
 
     SD_BUS_PROPERTY("Owner", "u", transaction::property_owner_get, 0, SD_BUS_VTABLE_PROPERTY_CONST),
 
@@ -89,13 +89,11 @@ METHOD_SIGNATURE(transaction, add)
             "You do not have permissions to modify this transaction.");
     }
 
-    entity_kind kind;
     const char * name;
 
-    co_yield log_and_reply_on_error(
-        sd_bus_message_read(message, "ys", &kind, &name), "Failed to parse parameters");
+    co_yield log_and_reply_on_error(sd_bus_message_read(message, "s", &name), "Failed to parse parameters");
 
-    add operation{ kind, name, {} };
+    add operation{ name, {} };
 
     co_yield log_and_reply_on_error(
         sd_bus_message_enter_container(message, SD_BUS_TYPE_ARRAY, "(ss)"), "Failed to enter container");

@@ -1,7 +1,0 @@
-[Unit]
-Description=Nonsense namespace engine network namespace target for %I
-
-Requires=nonsense-network@%i.service
-Wants=nonsense-connection@net.%i.service
-After=nonsense-network@%i.service nonsense-connection@net.%i.service
-

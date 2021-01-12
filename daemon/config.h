@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Michał 'Griwes' Dominiak
+ * Copyright © 2019-2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include "common_definitions.h"
 #include "dbus.h"
+#include "entity.h"
 #include "function.h"
 
 #include <json.hpp>
@@ -33,52 +34,11 @@ class service;
 
 class config;
 
-class entity
-{
-public:
-    subtask start();
-    subtask stop();
-
-private:
-    friend class config;
-
-    entity(config & config_object, nlohmann::json & self, entity_kind kind, std::string_view name);
-
-    config & _config;
-    nlohmann::json & _self;
-
-    entity_kind _kind;
-    std::string _name;
-};
-
 struct config_result
 {
     int error_code;
     std::string error_message;
 };
-
-struct property_result
-{
-    int status;
-    std::string property_value = "";
-};
-
-#define CONFIG_DECLARE_PROPERTY(name_)                                                                       \
-    property_result _handle_property_##name_(                                                                \
-        nlohmann::json::reference, entity_kind, std::string, std::string, sd_bus_error *) const
-
-#define CONFIG_DEFINE_PROPERTY(name_)                                                                        \
-    property_result config::_handle_property_##name_(                                                        \
-        nlohmann::json::reference entity,                                                                    \
-        entity_kind kind,                                                                                    \
-        std::string name,                                                                                    \
-        std::string property,                                                                                \
-        sd_bus_error * error) const
-
-#define CONFIG_PROPERTY(label, name_, ...)                                                                   \
-    {                                                                                                        \
-        label, &config::_handle_property_##name_ __VA_ARGS__                                                 \
-    }
 
 class config
 {
@@ -90,41 +50,23 @@ public:
 
     config & operator=(const config & other) noexcept;
 
-    void install(const service & srv, const char * dbus_path);
+    void install(service & srv, const char * dbus_path);
+    service & get_service() const;
 
-    std::optional<entity> try_get(entity_kind kind, std::string_view name) noexcept;
-    config_result add(
-        entity_kind kind,
-        std::string name,
-        std::vector<parameter_value> initial_parameters) noexcept;
+    std::optional<entity> try_get(std::string_view name) noexcept;
+    config_result add(std::string name, std::vector<parameter_value> initial_parameters) noexcept;
 
-    DECLARE_METHOD(lock);
-    DECLARE_METHOD(unlock);
     DECLARE_METHOD(get);
 
 private:
-    const service * _srv = nullptr;
+    service * _srv = nullptr;
     dbus_slot _config_slot;
     bool _mutable;
 
     nlohmann::json _configuration;
 
     void _validate_metadata() const;
-    void _ensure_top_level_keys();
-    void _validate_entity(entity_kind kind, std::string name) const;
-    void _validate_namespace(std::string name) const;
-    void _validate_network(std::string name) const;
-    void _validate_interface(std::string name) const;
-
-    template<bool Masked>
-    CONFIG_DECLARE_PROPERTY(downlink_address);
-    template<bool Masked>
-    CONFIG_DECLARE_PROPERTY(uplink_address);
-    CONFIG_DECLARE_PROPERTY(uplink_device);
-    CONFIG_DECLARE_PROPERTY(uplink_netns);
-    CONFIG_DECLARE_PROPERTY(uplink_entity);
-    CONFIG_DECLARE_PROPERTY(network_address);
-
-    using _property_handler_t = decltype(&config::_handle_property_uplink_entity);
+    void _validate_entity(std::string_view name, nlohmann::json & ns);
+    void _validate_network(std::string_view name, nlohmann::json & component);
 };
 }

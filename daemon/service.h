@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019 Michał 'Griwes' Dominiak
+ * Copyright © 2019, 2021 Michał 'Griwes' Dominiak
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,11 @@ public:
         return _bus;
     }
 
+    void register_bus(sd_bus * bus);
+    void unregister_bus(sd_bus * bus);
+
 private:
+    int _epoll_fd = -1;
     sd_bus * _bus = nullptr;
 };
 }
