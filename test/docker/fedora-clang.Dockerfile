@@ -19,6 +19,6 @@ ENV CCACHE_COMPILERCHECK=content
 RUN rm -rf build \
     && mkdir build \
     && cd build \
-    && CXX="ccache clang++ -stdlib=libc++" LD="ccache clang++ -stdlib=libc++" cmake .. \
+    && CXX="ccache clang++ -stdlib=libc++" LD="ccache clang++ -stdlib=libc++" cmake .. -DENABLE_TESTS=ON \
     && make install -j$(nproc)
 

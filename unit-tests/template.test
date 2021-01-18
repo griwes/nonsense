@@ -1,0 +1,3 @@
+cd /nonsense/build
+make unit-test-@test@
+echo '{ "!metadata": { "version": 1 } }' | ./unit-tests/unit-test-@test@ -c /dev/stdin
