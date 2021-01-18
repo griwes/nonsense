@@ -61,3 +61,6 @@ add_subdirectory(control)       # for nonsensectl
 add_subdirectory(dbus)          # for install targets of dbus configuration files
 add_subdirectory(systemd)       # for install targets of systemd units
 add_subdirectory(etc)           # for install targets of nft configuration for the router unit
+
+add_subdirectory(unit-tests EXCLUDE_FROM_ALL)
+

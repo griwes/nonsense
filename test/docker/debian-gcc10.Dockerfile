@@ -21,6 +21,6 @@ ENV CCACHE_COMPILERCHECK=content
 RUN rm -rf build \
     && mkdir build \
     && cd build \
-    && CXX="ccache g++-10" LD="ccache g++-10" cmake .. \
+    && CXX="ccache g++-10" LD="ccache g++-10" cmake .. -DENABLE_TESTS=ON \
     && make install -j$(nproc)
 

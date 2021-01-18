@@ -11,15 +11,24 @@ file(
     *.cpp
 )
 
-add_executable(
-    nonsensed
+list(REMOVE_ITEM sources ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+
+add_library(
+    nonsensed-objects
+    OBJECT
     ${sources}
 )
 
 set_target_properties(
-    nonsensed
+    nonsensed-objects
     PROPERTIES
         COMPILE_FLAGS "${SYSTEMD_CFLAGS} -I${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
+add_executable(
+    nonsensed
+    main.cpp
+    $<TARGET_OBJECTS:nonsensed-objects>
 )
 
 target_link_libraries(
