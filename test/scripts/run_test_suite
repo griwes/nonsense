@@ -159,8 +159,6 @@ do
                         printf '\nNonsense journal entries:\n'
                         journalctl -a -u 'nonsense*'
 
-                        journalctl -a
-
                         false
                     }
             " >${tmpdir}/log
