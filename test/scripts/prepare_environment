@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -xe
+
 export DEBIAN_FRONTEND=noninteractive
 
 sudo -E apt-mark hold grub-*
