@@ -9,8 +9,8 @@ known_configurations=(
     ubuntu-clang:{latest,rolling,devel}
     ubuntu-gcc10:{latest,rolling,devel}
 
-    fedora-clang:{31,32,latest,rawhide}
-    fedora-gcc:{32,latest,rawhide}
+    fedora-clang:{31,32,latest}
+    fedora-gcc:{32,latest}
 )
 
 tmpdir=$(mktemp -d)
@@ -158,6 +158,8 @@ do
 
                         printf '\nNonsense journal entries:\n'
                         journalctl -a -u 'nonsense*'
+
+                        journalctl -a
 
                         false
                     }
