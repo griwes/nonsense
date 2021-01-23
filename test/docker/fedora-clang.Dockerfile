@@ -11,6 +11,8 @@ RUN dnf install -y @development-tools procps cmake systemd-devel systemd iproute
 RUN systemctl mask serial-getty@ttyS0.service
 # le sigh: this fails to mount when running through binfmt
 RUN systemctl mask proc-sys-fs-binfmt_misc.automount
+# le sigh: sometimes leading to degrated state for no reason
+RUN systemctl disable dnf-makecache.timer
 RUN systemctl mask systemd-resolved.service
 RUN ln -sf /usr/lib/systemd/systemd /usr/bin/systemd
 
