@@ -1,15 +1,17 @@
 ARG ARCH=
-ARG RELEASE=rolling
-FROM ${ARCH}ubuntu:${RELEASE}
+ARG RELEASE=unstable
+FROM ${ARCH}debian:${RELEASE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get -yq full-upgrade
 
+ARG HOST=amd64
+RUN dpkg --add-architecture ${HOST}
+
 RUN apt-get update \
-    && apt-get install -yq build-essential pkg-config cmake libsystemd-dev systemd iproute2 iw nftables bind9 \
-        iputils-ping \
-        ccache g++-10 \
+    && apt-get install -yq build-essential pkg-config cmake libsystemd-dev systemd iproute2 iw nftables:${HOST} bind9 \
+        ccache g++ \
     && rm -rf /etc/systemd/system/*
 
 # le sigh: make the system not wait until a ttyS0 timeout without CONFIG_FHANDLE
@@ -25,6 +27,5 @@ ENV CCACHE_COMPILERCHECK=content
 RUN rm -rf build \
     && mkdir build \
     && cd build \
-    && CXX="ccache g++-10" LD="ccache g++-10" cmake .. -DENABLE_TESTS=ON \
+    && CXX="ccache g++" LD="ccache g++" cmake .. -DENABLE_TESTS=ON \
     && make install -j$(nproc)
-

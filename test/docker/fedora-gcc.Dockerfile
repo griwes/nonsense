@@ -9,6 +9,8 @@ RUN dnf install -y @development-tools procps cmake systemd-devel systemd iproute
 
 # le sigh: make the system not wait until a ttyS0 timeout without CONFIG_FHANDLE
 RUN systemctl mask serial-getty@ttyS0.service
+# le sigh: this fails to mount when running through binfmt
+RUN systemctl mask proc-sys-fs-binfmt_misc.automount
 RUN systemctl mask systemd-resolved.service
 RUN ln -sf /usr/lib/systemd/systemd /usr/bin/systemd
 

@@ -4,10 +4,11 @@ set -e
 
 known_configurations=(
     debian-clang:{testing,unstable}
-    debian-gcc10:{testing,unstable}
+    debian-gcc:{testing,unstable}
 
     ubuntu-clang:{latest,rolling,devel}
-    ubuntu-gcc10:{latest,rolling,devel}
+    ubuntu-gcc10:latest
+    ubuntu-gcc:{rolling,devel}
 
     fedora-clang:{31,32,latest}
     fedora-gcc:{32,latest}
@@ -22,6 +23,7 @@ trap cleanup EXIT
 
 function print_help() {
     echo "### Valid flags are:"
+    echo "### -a/--arch arch - run on the specified architecture"
     echo "### -d/--distribution distro:release - only run matching configurations (both distro and release are patterns)"
     echo "### -t/--testcase testcase - only run matching testcases (testcase is a pattern)"
     echo "### -f/--ignore-fatal - don't interrupt a test flow for a configuration after encountering fatal failure"
@@ -34,6 +36,17 @@ DOCKER_BUILD_PULL="--pull"
 while [[ $# -gt 0 ]]
 do
     case "$1" in
+        -a|--arch)
+            shift
+            ARCH=$1/
+            arch_string="${1} ### "
+            echo "### Requested architecture: ${1}"
+            shift
+
+            sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+            ;;
+
         -d|--distribution)
             shift
             IFS=':' read DISTRO RELEASE <<<$1
@@ -90,26 +103,36 @@ do
         continue
     fi
 
+    if [[ "${ARCH}" != "" && "${ARCH}" != "amd64/" && "${distro}" != debian-* ]]
+    then
+        echo "### Only Debian images support non-amd64 target architectures."
+        echo "### '-d ${distro}:${release}' is not supported with '-a ${ARCH::-1}'."
+
+        exit 1
+    fi
+
     echo
-    echo "### $(date) ### ${configuration}: build"
+    echo "### $(date) ### ${arch_string}${configuration}: build"
 
     rm -rf ./cache
-    sudo mkdir -p /cache/${configuration}
-    sudo chown ${USER}:${USER} /cache/${configuration}
-    cp -a /cache/${configuration} ./cache
+    sudo mkdir -p /cache/${ARCH}${configuration}
+    sudo chown ${USER}:${USER} /cache/${ARCH}${configuration}
+    cp -a /cache/${ARCH}${configuration} ./cache
 
     if ! sudo docker build ${DOCKER_BUILD_PULL} \
+        --build-arg=ARCH=${ARCH} \
+        --build-arg=HOST=$(dpkg --print-architecture) \
         --build-arg=RELEASE=${release} \
         -f test/docker/${distro}.Dockerfile \
-        --tag nonsense/${configuration} .
+        --tag nonsense/${ARCH}${configuration} .
     then
-        echo "### $(date) ### ${configuration}: build failure" | tee -a ${tmpdir}/results
+        echo "### $(date) ### ${arch_string}${configuration}: build failure" | tee -a ${tmpdir}/results
         continue
     fi
 
     sudo docker run --rm \
-        --mount type=bind,source=/cache/${configuration},destination=/host-cache \
-        nonsense/${configuration} \
+        --mount type=bind,source=/cache/${ARCH}${configuration},destination=/host-cache \
+        nonsense/${ARCH}${configuration} \
         cp -a /nonsense/cache/. /host-cache
     CCACHE_DIR=/cache/${configuration} ccache --cleanup
 
@@ -121,7 +144,7 @@ do
         fi
 
         echo
-        echo "### $(date) ### ${configuration}: ${test}: running..."
+        echo "### $(date) ### ${arch_string}${configuration}: ${test}: running..."
 
         fatal=0
         flags=
@@ -130,7 +153,6 @@ do
             flags=$(test/suite/${test}.setup pre ${tmpdir})
         fi
 
-        mkdir -p "/cache/${configuration}"
         container=$(sudo docker run --rm -d \
             --privileged \
             --tmpfs /run \
@@ -138,7 +160,7 @@ do
             --tmpfs /tmp \
             -v /sys/fs/cgroup:/sys/fs/cgroup \
             ${flags} \
-            nonsense/${configuration} systemd)
+            nonsense/${ARCH}${configuration} systemd)
 
         # allow a few seconds for dbus to stand up (otherwise random failures would accur not exactly rarely)
         # but only if it is not up at the point of doing docker exec
@@ -146,10 +168,10 @@ do
         # and then check the status
         if ! sudo docker exec ${container} bash -e -c '
                 i=3; if [[ "$i" -ne 0 ]] && ! pgrep dbus-daemon | grep "" -q; then sleep 1; i=$((i-1)); fi
-                systemctl is-system-running --wait && systemctl status
+                systemctl is-system-running --wait && systemctl status || { systemctl status; systemctl; false; }
             ' >/dev/null
         then
-            echo "### $(date) ### ${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
+            echo "### $(date) ### ${arch_string}${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
         elif sudo docker exec ${container} bash -c "
                 bash -ex /nonsense/test/suite/${test} 2>&1 \
                     || {
@@ -163,15 +185,15 @@ do
                     }
             " >${tmpdir}/log
         then
-            echo "### $(date) ### ${configuration}: ${test}: success"
+            echo "### $(date) ### ${arch_string}${configuration}: ${test}: success"
         else
             cat ${tmpdir}/log
             if [[ -f test/suite/${test}.fatal ]]
             then
-                echo "### $(date) ### ${configuration}: ${test}: fatal failure" | tee -a ${tmpdir}/results
+                echo "### $(date) ### ${arch_string}${configuration}: ${test}: fatal failure" | tee -a ${tmpdir}/results
                 fatal=1
             else
-                echo "### $(date) ### ${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
+                echo "### $(date) ### ${arch_string}${configuration}: ${test}: failure" | tee -a ${tmpdir}/results
             fi
         fi
         sudo docker kill ${container} >/dev/null

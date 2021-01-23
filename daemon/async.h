@@ -259,16 +259,16 @@ public:
                 return false;
             }
 
-            coro::coroutine_handle<> await_suspend(coro::coroutine_handle<> handle)
+            bool await_suspend(coro::coroutine_handle<> handle)
             {
                 if (status.code < 0)
                 {
                     promise_.return_value(reply_status_t{ status.code });
                     handle.destroy();
-                    return coro::noop_coroutine();
+                    return true;
                 }
 
-                return handle;
+                return false;
             }
 
             void await_resume()
