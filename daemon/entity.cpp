@@ -164,7 +164,7 @@ subtask entity::start()
         sd_bus * raw_bus;
         co_yield log_and_reply_on_error(sd_bus_new(&raw_bus), "Failed to allocate an sd_bus");
 
-        _entity_state state = { .pid = pid, .bus = _entity_state::bus_ptr(sd_bus_ref(raw_bus)) };
+        _entity_state state = { .pid = pid, .bus = _entity_state::bus_ptr(raw_bus) };
         _live_entities.emplace(_name, std::move(state));
 
         co_yield log_and_reply_on_error(sd_bus_set_fd(raw_bus, sv[0], sv[0]), "Failed to set bus fd");

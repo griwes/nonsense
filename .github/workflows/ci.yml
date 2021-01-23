@@ -16,28 +16,53 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        arch:
+
+        - amd64
+        - arm64v8
+        - ppc64le
+        - mips64le
+
         config:
 
         - "debian-clang:testing"
         - "debian-clang:unstable"
 
-        - "debian-gcc10:testing"
-        - "debian-gcc10:unstable"
+        - "debian-gcc:testing"
+        - "debian-gcc:unstable"
 
-        - "ubuntu-clang:latest"
-        - "ubuntu-clang:rolling"
-        - "ubuntu-clang:devel"
+        include:
 
-        - "ubuntu-gcc10:latest"
-        - "ubuntu-gcc10:rolling"
-        - "ubuntu-gcc10:devel"
+        # The tests need nft of the host arch, but it's not possible to easily get that on Ubuntu.
+        # dpkg --add-architecture amd64... works like in Debian, but... the paths of the repositories
+        # seem to be weird. Specifically, all the non-amd64 versions seem to use a "ports" repo...?
+        # And the URLs they use mean that trying to add amd64 results in an attempt to fetch the list
+        # of packages in a binary-amd64 "ports" repo, which doesn't exist.
+        #
+        # Great repo design, Ubuntu.
+        #
+        # Limit the Ubuntu tests to just amd64.
 
-        - "fedora-clang:31"
-        - "fedora-clang:32"
-        - "fedora-clang:latest"
+        - { arch: "amd64", config: "ubuntu-clang:latest" }
+        - { arch: "amd64", config: "ubuntu-clang:rolling" }
+        - { arch: "amd64", config: "ubuntu-clang:devel" }
 
-        - "fedora-gcc:32"
-        - "fedora-gcc:latest"
+        - { arch: "amd64", config: "ubuntu-gcc10:latest" }
+        - { arch: "amd64", config: "ubuntu-gcc:rolling" }
+        - { arch: "amd64", config: "ubuntu-gcc:devel" }
+
+        # The tests need nft of the host arch, but it's not possible to easily get that on Fedora;
+        # trying to install "foreign" packages just results in a conflict between the native and
+        # foreign libc packages.
+        #
+        # Limit the Fedora tests to just amd64.
+
+        - { arch: "amd64", config: "fedora-clang:31" }
+        - { arch: "amd64", config: "fedora-clang:32" }
+        - { arch: "amd64", config: "fedora-clang:latest" }
+
+        - { arch: "amd64", config: "fedora-gcc:32" }
+        - { arch: "amd64", config: "fedora-gcc:latest" }
 
     runs-on: ubuntu-latest
 
@@ -53,4 +78,4 @@ jobs:
       run: /nonsense/test/scripts/prepare_environment
 
     - name: Run tests
-      run: /nonsense/test/scripts/run_test_suite -d ${{ matrix.config }}
+      run: /nonsense/test/scripts/run_test_suite -d ${{ matrix.config }} -a ${{ matrix.arch }}
