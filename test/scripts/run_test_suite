@@ -168,13 +168,16 @@ do
         # and then check the status
         if ! sudo docker exec ${container} bash -e -c '
                 i=3; if [[ "$i" -ne 0 ]] && ! pgrep dbus-daemon | grep "" -q; then sleep 1; i=$((i-1)); fi
-                systemctl is-system-running --wait && systemctl status || { systemctl status; systemctl; false; }
+                systemctl is-system-running --wait && systemctl status || { systemctl status >&2; systemctl >&2; false; }
             ' >/dev/null
         then
             echo "### $(date) ### ${arch_string}${configuration}: ${test}: setup failure" | tee -a ${tmpdir}/results
         elif sudo docker exec ${container} bash -c "
                 bash -ex /nonsense/test/suite/${test} 2>&1 \
                     || {
+                        printf '\nSystem state:\n'
+                        systemctl
+
                         printf '\nNonsense services status:\n'
                         systemctl status 'nonsense*'
 
