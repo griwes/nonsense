@@ -136,7 +136,7 @@ do
         cp -a /nonsense/cache/. /host-cache
     CCACHE_DIR=/cache/${configuration} ccache --cleanup
 
-    for test in $(find test/suite -name "*.test" | sed 's:^test/suite/::' | sort -n)
+    for test in $(sudo docker run nonsense/${ARCH}${configuration} find /nonsense/test/suite -name "*.test" | sed 's:^/nonsense/test/suite/::' | sort -n)
     do
         if should_skip "${TESTCASE}" "${test}"
         then
